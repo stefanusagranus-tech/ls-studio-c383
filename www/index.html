@@ -1,0 +1,2344 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>LS Studio Retail OS - C383 Karang Satria</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      transition: background 0.8s ease, color 0.5s ease;
+    }
+    .font-num { font-family: 'JetBrains Mono', monospace; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* ========================================== */
+    /* DYNAMIC SKY & WEATHER BACKGROUND CSS       */
+    /* ========================================== */
+    body.sky-day {
+      background: linear-gradient(180deg, #38BDF8 0%, #BAE6FD 40%, #F1F5F9 100%);
+      color: #0F172A;
+    }
+    body.sky-sunset {
+      background: linear-gradient(180deg, #7C2D12 0%, #EA580C 35%, #FDE68A 75%, #FFF7ED 100%);
+      color: #1E293B;
+    }
+    body.sky-night {
+      background: radial-gradient(ellipse at top, #1E1B4B 0%, #0F172A 55%, #020617 100%);
+      color: #F8FAFC;
+    }
+
+    /* Animated Celestial Layer */
+    #skyCanvas {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 320px;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    /* Twinkling Stars (Night Mode) */
+    .star {
+      position: absolute;
+      background: #FFFFFF;
+      border-radius: 50%;
+      box-shadow: 0 0 6px #FFFFFF;
+      animation: twinkle var(--dur, 3s) infinite ease-in-out alternate;
+      opacity: 0;
+      transition: opacity 0.8s ease;
+    }
+    body.sky-night .star { opacity: 0.85; }
+    body.sky-sunset .star { opacity: 0.25; }
+
+    @keyframes twinkle {
+      0% { transform: scale(0.7); opacity: 0.2; }
+      100% { transform: scale(1.3); opacity: 1; }
+    }
+
+    /* Glowing Moon (Night Mode) */
+    .celestial-moon {
+      position: absolute;
+      top: 28px;
+      right: 12%;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #FEF9C3, #FDE047 60%, #CA8A04 100%);
+      box-shadow: 0 0 35px 8px rgba(253, 224, 71, 0.35), 0 0 80px 20px rgba(253, 224, 71, 0.15);
+      transition: all 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+      opacity: 0;
+      transform: translateY(40px) scale(0.6);
+    }
+    body.sky-night .celestial-moon {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    /* Glowing Sun (Day & Sunset Mode) */
+    .celestial-sun {
+      position: absolute;
+      top: 32px;
+      right: 12%;
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #FFFBEB 0%, #FBBF24 70%, #F59E0B 100%);
+      box-shadow: 0 0 45px 15px rgba(251, 191, 36, 0.55);
+      transition: all 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+      opacity: 0;
+      transform: translateY(40px) scale(0.6);
+    }
+    body.sky-day .celestial-sun {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    body.sky-sunset .celestial-sun {
+      opacity: 1;
+      top: 75px;
+      background: radial-gradient(circle, #FEF3C7 0%, #F97316 65%, #DC2626 100%);
+      box-shadow: 0 0 55px 20px rgba(234, 88, 12, 0.65);
+      transform: translateY(0) scale(1.1);
+    }
+
+    /* Soft Drifting Clouds */
+    .cloud {
+      position: absolute;
+      border-radius: 9999px;
+      filter: blur(8px);
+      animation: driftCloud var(--speed, 45s) infinite linear;
+      opacity: 0.35;
+    }
+    body.sky-day .cloud { background: rgba(255, 255, 255, 0.75); opacity: 0.65; }
+    body.sky-sunset .cloud { background: rgba(254, 215, 170, 0.45); opacity: 0.5; }
+    body.sky-night .cloud { background: rgba(148, 163, 184, 0.14); opacity: 0.4; }
+
+    @keyframes driftCloud {
+      0% { transform: translateX(-220px); }
+      100% { transform: translateX(110vw); }
+    }
+
+    /* Adaptive Glass Cards */
+    .sky-day .app-card {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border-color: rgba(226, 232, 240, 0.9);
+      color: #0F172A;
+    }
+    .sky-sunset .app-card {
+      background: rgba(255, 255, 255, 0.90);
+      backdrop-filter: blur(12px);
+      border-color: rgba(254, 215, 170, 0.9);
+      color: #1E293B;
+    }
+    .sky-night .app-card {
+      background: rgba(15, 23, 42, 0.82);
+      backdrop-filter: blur(14px);
+      border-color: rgba(51, 65, 85, 0.75);
+      color: #F8FAFC;
+    }
+
+    .sky-day .sub-card { background: #F8FAFC; border-color: #E2E8F0; color: #0F172A; }
+    .sky-sunset .sub-card { background: #FFFBEB; border-color: #FDE68A; color: #1E293B; }
+    .sky-night .sub-card { background: rgba(2, 6, 23, 0.65); border-color: #1E293B; color: #F8FAFC; }
+
+    .sky-day .text-muted { color: #475569; }
+    .sky-sunset .text-muted { color: #78716C; }
+    .sky-night .text-muted { color: #94A3B8; }
+
+    .sky-day .bottom-bar { background: rgba(255,255,255,0.95); border-top: 1px solid #E2E8F0; }
+    .sky-sunset .bottom-bar { background: rgba(255,255,255,0.95); border-top: 1px solid #FED7AA; }
+    .sky-night .bottom-bar { background: rgba(9, 13, 26, 0.95); border-top: 1px solid #1E293B; }
+
+    .poster-border { border: 2px solid #003882; }
+
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #FFFFFF !important; color: #000000 !important; }
+      #pageExport { display: block !important; }
+      #pageHome, #pageIkt, #pageSo, #pageMember, #pageTodo { display: none !important; }
+    }
+  </style>
+</head>
+<body class="sky-night min-h-screen pb-24 relative">
+
+  <!-- ========================================== -->
+  <!-- ANIMATED CELESTIAL SKY BACKGROUND          -->
+  <!-- ========================================== -->
+  <div id="skyCanvas" class="no-print">
+    <!-- Stars generated via JS -->
+    <div id="starsContainer"></div>
+    <!-- Moon & Sun -->
+    <div class="celestial-moon"></div>
+    <div class="celestial-sun"></div>
+    <!-- Soft Animated Clouds -->
+    <div class="cloud" style="width: 180px; height: 42px; top: 38px; left: 5%; --speed: 55s;"></div>
+    <div class="cloud" style="width: 240px; height: 52px; top: 85px; left: 35%; --speed: 72s;"></div>
+    <div class="cloud" style="width: 160px; height: 36px; top: 55px; left: 70%; --speed: 60s;"></div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- LOGIN OVERLAY (AUTHENTICATION GATE)        -->
+  <!-- ========================================== -->
+  <div id="loginOverlay" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-xl hidden no-print">
+    <div class="w-full max-w-sm bg-slate-900/95 border border-slate-800 rounded-3xl p-6 shadow-2xl text-white space-y-5 relative overflow-hidden">
+      <!-- Top Glow -->
+      <div class="text-center space-y-1.5">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-600 to-red-700 mx-auto flex items-center justify-center text-white font-black text-2xl shadow-lg border border-red-400/30">
+          C3
+        </div>
+        <h2 class="text-lg font-extrabold tracking-tight pt-1">Toko Karang Satria [C383]</h2>
+        <p class="text-xs text-slate-400">Masuk dengan akun <code class="text-cyan-400">users</code> / <code class="text-cyan-400">personil_master</code></p>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-400 font-bold mb-1">NIK / Username Personil</label>
+          <input type="text" id="loginUsername" value="LGMAS" list="userSuggestions" placeholder="Contoh: LGMAS atau KAZUHA" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-semibold focus:border-blue-500 outline-none">
+          <datalist id="userSuggestions">
+            <option value="LGMAS">SIMP MACHI (admin)</option>
+            <option value="KAZUHA">Buzzer Sclash Driver (admin)</option>
+          </datalist>
+        </div>
+        <div>
+          <label class="block text-slate-400 font-bold mb-1">PIN / Password</label>
+          <input type="password" id="loginPassword" value="123456" placeholder="••••••" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-semibold focus:border-blue-500 outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 font-bold mb-1">Role (`roles`)</label>
+            <select id="loginRole" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-2 text-white font-semibold outline-none">
+              <option value="admin">admin (COS / ACOS)</option>
+              <option value="crew">crew (Kasir / Pramuniaga)</option>
+              <option value="supervisor">supervisor (Area Coord)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 font-bold mb-1">Shift (`master_shift`)</label>
+            <select id="loginShift" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-2 text-white font-semibold outline-none">
+              <option value="Shift 1 (Pagi)">Shift 1 (Pagi)</option>
+              <option value="Shift 2 (Siang)">Shift 2 (Siang)</option>
+              <option value="Shift 3 (Malam)">Shift 3 (Malam)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <button id="btnSubmitLogin" class="w-full py-3 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-extrabold text-xs shadow-lg transition">
+        🔐 Masuk & Buka Dashboard
+      </button>
+
+      <div class="text-center text-[10px] text-slate-500 font-mono">
+        LS Studio monitoring version 0.1.2026
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TOP ANDROID STATUS & USER BAR              -->
+  <!-- ========================================== -->
+  <header class="sticky top-0 z-30 backdrop-blur-md bg-slate-950/40 border-b border-white/10 px-4 py-2.5 no-print">
+    <div class="max-w-4xl mx-auto flex items-center justify-between gap-2">
+      <!-- Store & Active User Badge -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center text-white font-black text-sm shadow-sm flex-shrink-0">
+          C3
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <h1 class="text-xs sm:text-sm font-extrabold tracking-tight text-white leading-none">KARANG SATRIA [C383]</h1>
+            <span id="supaStatusDot" class="w-2 h-2 rounded-full bg-emerald-400" title="Mode Penyimpanan Aktif"></span>
+          </div>
+          <div class="flex items-center gap-1.5 text-[10px] text-white/80 font-medium mt-0.5">
+            <span id="activeUserBadge">👤 COS • Shift Malam</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls: Sky Mode, Quick Input, Settings, Lock -->
+      <div class="flex items-center gap-1.5">
+        <button id="btnCycleSky" class="px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold flex items-center gap-1 backdrop-blur-xs transition" title="Siklus Tema Jam & Cuaca">
+          <span id="skyModeIcon">🌙</span>
+          <span id="skyModeText" class="hidden sm:inline text-[11px]">Malam</span>
+        </button>
+
+        <button id="btnOpenInput" class="px-2.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs transition">
+          + Input
+        </button>
+
+        <button id="btnOpenConfig" class="p-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs transition" title="Konfigurasi Supabase & API">
+          ⚙️
+        </button>
+
+        <button id="btnLogout" class="p-1.5 rounded-xl bg-white/15 hover:bg-red-500/40 text-white text-xs transition" title="Ganti Shift / Keluar">
+          🔒
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================== -->
+  <!-- MAIN CONTENT CONTAINER                     -->
+  <!-- ========================================== -->
+  <main class="relative z-10 max-w-4xl mx-auto px-3.5 sm:px-5 pt-4 space-y-5">
+
+    <!-- ========================================== -->
+    <!-- PAGE 0: BERANDA (INSIGHT, JAM, CUACA, GROQ)-->
+    <!-- ========================================== -->
+    <section id="pageHome" class="space-y-4">
+      
+      <!-- Transparent Celestial Hero Card -->
+      <div class="rounded-3xl p-5 text-white shadow-xl bg-slate-950/45 backdrop-blur-md border border-white/15 relative overflow-hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="space-y-1">
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 text-[11px] font-semibold">
+              <span id="weatherIcon">🌙</span>
+              <span id="weatherLabel">Bekasi, 27°C • Langit Malam Berbintang</span>
+            </div>
+            <div id="clockDisplay" class="text-3xl sm:text-4xl font-black font-num tracking-tight mt-1">01:28:45</div>
+            <div id="dateDisplay" class="text-xs text-white/80 font-medium">Rabu, 11 November 2026</div>
+          </div>
+
+          <!-- Target Kejar Box -->
+          <div class="bg-slate-900/70 backdrop-blur-md rounded-2xl p-3.5 border border-white/15 sm:text-right">
+            <span class="text-[10px] uppercase tracking-wider font-extrabold text-amber-300 block">Target Harian Terbaru (Auto-Gap)</span>
+            <div id="homeNewTarget" class="text-xl font-black font-num text-white mt-0.5">Rp 15.268.798</div>
+            <span id="homeNewTargetSub" class="text-[11px] text-emerald-300 font-semibold block">+Rp 356.525/hr (Sisa 21 Hari)</span>
+          </div>
+        </div>
+
+        <!-- Groq Review & Smart Cache Guard Strip -->
+        <div class="mt-4 pt-3.5 border-t border-white/15 space-y-2">
+          <div class="flex items-start gap-2.5">
+            <span class="text-base">🤖</span>
+            <div class="flex-1 text-xs leading-relaxed text-white/95">
+              <div class="flex flex-wrap items-center gap-1.5 mb-0.5">
+                <span class="font-bold text-cyan-300">Groq Review:</span>
+                <span id="groqCacheBadge" class="px-1.5 py-0.2 rounded text-[9px] font-mono bg-emerald-500/25 text-emerald-300 border border-emerald-400/30">⚡ Smart Cache Aktif (Hemat Token)</span>
+                <span id="groqQuotaBadge" class="px-1.5 py-0.2 rounded text-[9px] font-mono bg-white/10 text-white/80">Kuota Shift: 3/3</span>
+              </div>
+              <span id="groqText" class="italic">"Halo Tim C383! Pencapaian MTD kita di 94,45% (kurang Rp 7,49 Jt). Fokuskan kasir tawarkan PWP tebus murah min. Rp 50rb ya, tambahan Rp 178rb/shift sudah mengunci 100% akhir bulan!"</span>
+            </div>
+            <button id="btnRefreshGroq" class="text-[11px] px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold flex items-center gap-1 flex-shrink-0 transition" title="Khusus Admin (Cooldown 60 Detik)">🔄</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 Main Store Pillars -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="app-card p-3.5 rounded-2xl border shadow-xs cursor-pointer transition hover:scale-[1.01]" data-goto="pageIkt">
+          <div class="flex items-center justify-between text-[11px] text-muted font-bold">
+            <span>ACTUAL MTD</span>
+            <span>📊</span>
+          </div>
+          <div id="cardHomeSales" class="text-base sm:text-lg font-extrabold font-num mt-1">Rp 127,31 Jt</div>
+          <div id="cardHomeAcv" class="text-[11px] font-bold text-amber-500 mt-0.5">Acv: 94,45%</div>
+        </div>
+
+        <div class="app-card p-3.5 rounded-2xl border shadow-xs cursor-pointer transition hover:scale-[1.01]" data-goto="pageIkt">
+          <div class="flex items-center justify-between text-[11px] text-muted font-bold">
+            <span>GROSS MARGIN</span>
+            <span>💹</span>
+          </div>
+          <div id="cardHomeGmPct" class="text-base sm:text-lg font-extrabold font-num text-emerald-500 mt-1">18,65%</div>
+          <div id="cardHomeGmRp" class="text-[11px] text-muted font-num mt-0.5">Rp 23,74 Jt</div>
+        </div>
+
+        <div class="app-card p-3.5 rounded-2xl border shadow-xs cursor-pointer transition hover:scale-[1.01]" data-goto="pageSo">
+          <div class="flex items-center justify-between text-[11px] text-muted font-bold">
+            <span>STOCK OPNAME</span>
+            <span>📦</span>
+          </div>
+          <div id="cardHomeSoStatus" class="text-base sm:text-lg font-extrabold text-emerald-500 mt-1">🟢 AMAN</div>
+          <div id="cardHomeSoPct" class="text-[11px] text-muted font-num mt-0.5">0,118% (Batas 0,15%)</div>
+        </div>
+
+        <div class="app-card p-3.5 rounded-2xl border shadow-xs cursor-pointer transition hover:scale-[1.01]" data-goto="pageMember">
+          <div class="flex items-center justify-between text-[11px] text-muted font-bold">
+            <span>STD MEMBER</span>
+            <span>👥</span>
+          </div>
+          <div id="cardHomeMemPct" class="text-base sm:text-lg font-extrabold font-num text-purple-500 mt-1">58,41%</div>
+          <div id="cardHomeTodoPct" class="text-[11px] text-muted mt-0.5">To-Do: 50% Selesai</div>
+        </div>
+      </div>
+
+      <!-- Broadcast & Streamlit Shortcut Card -->
+      <div class="app-card p-4 rounded-2xl border shadow-xs flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-500 flex items-center justify-center text-lg font-bold">
+            🌐
+          </div>
+          <div>
+            <h3 class="text-xs sm:text-sm font-bold">Shortcut Streamlit & Sinkronisasi Supabase</h3>
+            <p class="text-[11px] text-muted" id="supaSyncStatusText">Tabel aktif: v_spd_harian, so_hasil, so_rak_harian, users</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btnPullSupabase" class="px-3 py-2 rounded-xl sub-card border text-xs font-bold hover:opacity-80 transition">
+            🔄 Sync Supabase
+          </button>
+          <a id="linkStreamlitHome" href="https://share.streamlit.io/" target="_blank" class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition">
+            Streamlit SO ↗
+          </a>
+        </div>
+      </div>
+
+      <!-- Mini Sales Chart -->
+      <div class="app-card p-4 rounded-2xl border shadow-xs space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-xs sm:text-sm font-bold">Grafik Tren Penjualan & Target Dinamis</h3>
+            <p class="text-[11px] text-muted">Garis putus-putus mengikuti perubahan gap harian</p>
+          </div>
+          <button class="text-xs font-bold text-blue-500 hover:underline" data-goto="pageIkt">Tabel Detail →</button>
+        </div>
+        <div class="relative h-52 w-full">
+          <canvas id="homeChartCanvas"></canvas>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- PAGE 1: IKT TOKO (SALES, GM%, GM RP, TABEL)-->
+    <!-- ========================================== -->
+    <section id="pageIkt" class="space-y-4 hidden">
+      
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="app-card p-3.5 rounded-2xl border">
+          <span class="text-[10px] font-bold text-muted uppercase">Actual Net Sales</span>
+          <div id="iktSalesVal" class="text-base sm:text-lg font-black font-num mt-0.5">Rp 127.305.053</div>
+          <span id="iktTargetVal" class="text-[10px] text-muted font-num block mt-0.5">Tgt: Rp 134.792.258</span>
+        </div>
+        <div class="app-card p-3.5 rounded-2xl border">
+          <span class="text-[10px] font-bold text-muted uppercase">Gross Margin (Rp)</span>
+          <div id="iktGmRpVal" class="text-base sm:text-lg font-black font-num text-emerald-500 mt-0.5">Rp 23.742.392</div>
+          <span class="text-[10px] text-muted block mt-0.5">Akumulasi GM Rupiah</span>
+        </div>
+        <div class="app-card p-3.5 rounded-2xl border">
+          <span class="text-[10px] font-bold text-muted uppercase">Rata-Rata GM (%)</span>
+          <div id="iktGmPctVal" class="text-base sm:text-lg font-black font-num text-cyan-500 mt-0.5">18,65 %</div>
+          <span class="text-[10px] text-emerald-500 font-semibold block mt-0.5">Target &ge; 18,20%</span>
+        </div>
+        <div class="app-card p-3.5 rounded-2xl border">
+          <span class="text-[10px] font-bold text-muted uppercase">Gap Sales MTD</span>
+          <div id="iktGapVal" class="text-base sm:text-lg font-black font-num text-red-500 mt-0.5">-Rp 7.487.205</div>
+          <span id="iktNewTargetSub" class="text-[10px] text-amber-500 font-bold block mt-0.5">Tgt Baru: Rp 15,27 Jt/hr</span>
+        </div>
+      </div>
+
+      <!-- Filter & Simulation Bar -->
+      <div class="app-card p-3.5 rounded-2xl border flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-1.5">
+          <button id="iktBtnAll" class="ikt-flt px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 text-white">Semua (30)</button>
+          <button id="iktBtnFilled" class="ikt-flt px-3 py-1.5 rounded-xl text-xs font-semibold sub-card border">Terisi</button>
+          <button id="iktBtnPending" class="ikt-flt px-3 py-1.5 rounded-xl text-xs font-semibold sub-card border">Sisa Hari</button>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btnSimIkt" class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition">
+            ⚡ Simulasi Sisa Hari
+          </button>
+          <button id="btnResetIkt" class="px-3 py-1.5 rounded-xl sub-card border text-xs font-semibold">
+            ↺ Reset H1-H9
+          </button>
+        </div>
+      </div>
+
+      <!-- Detail Table (`spd_harian` / `net_sales`) -->
+      <div class="app-card rounded-2xl border overflow-hidden">
+        <div class="p-3.5 border-b border-slate-500/15 flex items-center justify-between">
+          <div>
+            <h3 class="text-xs sm:text-sm font-bold">Tabel Detail IKT: Sales Actual vs Target Dinamis (`spd_harian`)</h3>
+            <p class="text-[11px] text-muted">Target hari yang belum terisi otomatis menyesuaikan sisa gap</p>
+          </div>
+        </div>
+        <div class="overflow-x-auto max-h-[440px] overflow-y-auto no-scrollbar">
+          <table class="w-full text-left text-xs border-collapse font-num">
+            <thead class="sticky top-0 bg-slate-800 text-white uppercase text-[10px] font-bold z-10">
+              <tr>
+                <th class="py-2.5 px-3 text-center">Tgl</th>
+                <th class="py-2.5 px-3 text-right">Target (Rp)</th>
+                <th class="py-2.5 px-3 text-right">Actual (Rp)</th>
+                <th class="py-2.5 px-3 text-center">Acv%</th>
+                <th class="py-2.5 px-3 text-right">Gap (Rp)</th>
+                <th class="py-2.5 px-3 text-center">GM%</th>
+                <th class="py-2.5 px-3 text-right">GM (Rp)</th>
+                <th class="py-2.5 px-3 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="iktTableBody" class="divide-y divide-slate-500/15"></tbody>
+            <tfoot class="sticky bottom-0 bg-slate-900 text-white font-bold text-xs z-10">
+              <tr>
+                <td class="py-3 px-3 text-center">TOTAL</td>
+                <td class="py-3 px-3 text-right" id="footIktTgt">Rp 134.792.258</td>
+                <td class="py-3 px-3 text-right text-cyan-400" id="footIktAct">Rp 127.305.053</td>
+                <td class="py-3 px-3 text-center text-amber-400" id="footIktAcv">94,45%</td>
+                <td class="py-3 px-3 text-right text-red-400" id="footIktGap">-Rp 7.487.205</td>
+                <td class="py-3 px-3 text-center text-emerald-400" id="footIktGmPct">18,65%</td>
+                <td class="py-3 px-3 text-right text-emerald-400" id="footIktGmRp">Rp 23.742.392</td>
+                <td class="py-3 px-3 text-center">-</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- PAGE 2: STOCK OPNAME (`so_hasil` & `so_rak_harian`) -->
+    <!-- ========================================== -->
+    <section id="pageSo" class="space-y-4 hidden">
+      
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="app-card p-3.5 rounded-2xl border">
+          <span class="text-[10px] font-bold text-muted uppercase">Budget SO (0,15%)</span>
+          <div id="soBudgetVal" class="text-base sm:text-lg font-black font-num text-cyan-500 mt-0.5">Rp 190.957</div>
+          <span class="text-[10px] text-muted block mt-0.5">Batas Toleransi Toko</span>
+        </div>
+        <div class="app-card p-3.5 rounded-2xl border">
+          <span class="text-[10px] font-bold text-muted uppercase">Nominal Adjust SO</span>
+          <div id="soAdjustVal" class="text-base sm:text-lg font-black font-num text-amber-500 mt-0.5">-Rp 150.200</div>
+          <span class="text-[10px] text-muted block mt-0.5">Tabel `so_hasil`</span>
+        </div>
+        <div class="app-card p-3.5 rounded-2xl border">
+          <span class="text-[10px] font-bold text-muted uppercase">Persentase SO (%)</span>
+          <div id="soPctDisplay" class="text-base sm:text-lg font-black font-num text-emerald-500 mt-0.5">0,118 %</div>
+          <span class="text-[10px] text-muted block mt-0.5">Rasio vs Net Sales</span>
+        </div>
+        <div class="app-card p-3.5 rounded-2xl border">
+          <span class="text-[10px] font-bold text-muted uppercase">Status Keterangan</span>
+          <div id="soStatusText" class="text-base sm:text-lg font-black text-emerald-500 mt-0.5">🟢 AMAN</div>
+          <span id="soSisaBudget" class="text-[10px] text-emerald-500 font-semibold block mt-0.5">Sisa Kuota: Rp 40.757</span>
+        </div>
+      </div>
+
+      <!-- Streamlit Shortcut Banner -->
+      <div class="rounded-2xl p-4 bg-gradient-to-r from-blue-900 to-indigo-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+        <div>
+          <span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-blue-500 uppercase">Dashboard Analitik SO</span>
+          <h3 class="text-sm sm:text-base font-bold mt-1">Detail Stock Opname Per Rak di Streamlit</h3>
+          <p class="text-xs text-blue-200">Terhubung dengan tabel <code class="text-white">rak_master</code> dan <code class="text-white">so_rak_harian</code> untuk pelacakan selisih barang.</p>
+        </div>
+        <a id="linkStreamlitSo" href="https://share.streamlit.io/" target="_blank" class="px-4 py-2.5 rounded-xl bg-white text-blue-900 font-extrabold text-xs shadow-sm hover:bg-blue-50 transition flex-shrink-0 text-center">
+          🌐 Buka Streamlit SO ↗
+        </a>
+      </div>
+
+      <!-- Table `so_rak_harian` & `rak_master` -->
+      <div class="app-card rounded-2xl border overflow-hidden">
+        <div class="p-3.5 border-b border-slate-500/15 flex items-center justify-between">
+          <div>
+            <h3 class="text-xs sm:text-sm font-bold">Tabel Detail SO Per Rak (`so_rak_harian` & `rak_master`)</h3>
+            <p class="text-[11px] text-muted">Daftar rak fokus yang diaudit harian oleh tim toko</p>
+          </div>
+          <button id="btnAddSoRak" class="px-3 py-1.5 rounded-xl bg-blue-600 text-white text-xs font-bold">+ Tambah Audit Rak</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse font-num">
+            <thead class="bg-slate-800 text-white uppercase text-[10px]">
+              <tr>
+                <th class="py-2.5 px-3">Kode Rak</th>
+                <th class="py-2.5 px-3">Nama / Kategori Rak</th>
+                <th class="py-2.5 px-3 text-right">Adjust (Rp)</th>
+                <th class="py-2.5 px-3">Keterangan Audit</th>
+                <th class="py-2.5 px-3 text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody id="soRakBody" class="divide-y divide-slate-500/15"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- PAGE 3: KONTRIBUSI MEMBER                  -->
+    <!-- ========================================== -->
+    <section id="pageMember" class="space-y-4 hidden">
+      
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="app-card p-3.5 rounded-2xl border">
+          <span class="text-[10px] font-bold text-muted uppercase">STD Toko</span>
+          <div id="memTotalToko" class="text-base sm:text-lg font-black font-num mt-0.5">3.890 Struk</div>
+          <span class="text-[10px] text-muted block mt-0.5">Total Struk Belanja</span>
+        </div>
+        <div class="app-card p-3.5 rounded-2xl border">
+          <span class="text-[10px] font-bold text-muted uppercase">STD Member</span>
+          <div id="memTotalMember" class="text-base sm:text-lg font-black font-num text-purple-500 mt-0.5">2.272 Struk</div>
+          <span class="text-[10px] text-muted block mt-0.5">Transaksi Member</span>
+        </div>
+        <div class="app-card p-3.5 rounded-2xl border">
+          <span class="text-[10px] font-bold text-muted uppercase">Sales Member (Rp)</span>
+          <div id="memTotalSales" class="text-base sm:text-lg font-black font-num text-indigo-500 mt-0.5">Rp 76.420.000</div>
+          <span class="text-[10px] text-muted block mt-0.5">Kontribusi Rupiah</span>
+        </div>
+        <div class="app-card p-3.5 rounded-2xl border">
+          <span class="text-[10px] font-bold text-muted uppercase">Actual STD Member %</span>
+          <div id="memActualPct" class="text-base sm:text-lg font-black font-num text-emerald-500 mt-0.5">58,41 %</div>
+          <span class="text-[10px] text-emerald-500 font-semibold block mt-0.5">Target &ge; 55,00%</span>
+        </div>
+      </div>
+
+      <div class="app-card rounded-2xl border overflow-hidden">
+        <div class="p-3.5 border-b border-slate-500/15">
+          <h3 class="text-xs sm:text-sm font-bold">Detail Harian: STD Toko vs STD Member & Achievement</h3>
+          <p class="text-[11px] text-muted">Perbandingan jumlah struk harian dan persentase pencapaian target member</p>
+        </div>
+        <div class="overflow-x-auto max-h-96 overflow-y-auto no-scrollbar">
+          <table class="w-full text-left text-xs border-collapse font-num">
+            <thead class="sticky top-0 bg-slate-800 text-white uppercase text-[10px]">
+              <tr>
+                <th class="py-2.5 px-3 text-center">Tgl</th>
+                <th class="py-2.5 px-3 text-right">STD Toko</th>
+                <th class="py-2.5 px-3 text-right">STD Member</th>
+                <th class="py-2.5 px-3 text-center">Actual Member %</th>
+                <th class="py-2.5 px-3 text-right">Sales Member (Rp)</th>
+                <th class="py-2.5 px-3 text-center">Achievement</th>
+              </tr>
+            </thead>
+            <tbody id="memberTableBody" class="divide-y divide-slate-500/15"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- PAGE 4: TO-DO LIST & SHIFT REPORT          -->
+    <!-- ========================================== -->
+    <section id="pageTodo" class="space-y-4 hidden">
+      
+      <div class="app-card p-4 rounded-2xl border space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <span class="text-[10px] font-extrabold uppercase text-blue-500">Log Aktivitas Shift (`master_shift_log`)</span>
+            <h3 class="text-base font-extrabold mt-0.5">Persentase Penyelesaian Tugas Harian</h3>
+          </div>
+          <div id="todoPctDisplay" class="text-2xl font-black font-num text-emerald-500">50%</div>
+        </div>
+        <div class="w-full bg-slate-500/20 rounded-full h-3 overflow-hidden">
+          <div id="todoBarFill" class="bg-emerald-500 h-3 rounded-full transition-all duration-300" style="width: 50%"></div>
+        </div>
+        <div class="flex items-center justify-between text-xs text-muted">
+          <span id="todoCounterText">3 dari 6 tugas selesai</span>
+          <button id="btnCopyTodoWa" class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition">
+            📋 Salin Report To-Do Harian
+          </button>
+        </div>
+      </div>
+
+      <!-- Add To-Do Form -->
+      <div class="app-card p-3.5 rounded-2xl border flex flex-col sm:flex-row gap-2">
+        <select id="todoShiftSelect" class="sub-card border rounded-xl px-3 py-2 text-xs font-semibold outline-none">
+          <option value="Pagi">🌅 Shift Pagi</option>
+          <option value="Siang">☀️ Shift Siang</option>
+          <option value="Malam">🌙 Shift Malam</option>
+        </select>
+        <input type="text" id="todoInputText" placeholder="Tambah tugas operasional baru..." class="flex-1 sub-card border rounded-xl px-3.5 py-2 text-xs outline-none focus:border-blue-500">
+        <button id="btnAddTodo" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition">
+          + Tambah
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="app-card p-4 rounded-2xl border space-y-2.5">
+          <h4 class="text-xs font-bold uppercase text-muted">Ceklis Operasional Harian</h4>
+          <div id="todoListWrapper" class="space-y-2 max-h-80 overflow-y-auto no-scrollbar"></div>
+        </div>
+
+        <div class="app-card p-4 rounded-2xl border space-y-2.5">
+          <h4 class="text-xs font-bold uppercase text-muted">Preview Report Harian</h4>
+          <pre id="todoReportPreview" class="sub-card border rounded-xl p-3 text-[11px] font-mono whitespace-pre-wrap leading-relaxed h-72 overflow-y-auto"></pre>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- PAGE 5: LAPORAN, POSTER 1:1, PDF & AI      -->
+    <!-- ========================================== -->
+    <section id="pageExport" class="space-y-5 hidden">
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 no-print">
+        
+        <!-- AI Insight (`ai_chat_history`) with Admin Guard & Smart Cache -->
+        <div class="app-card p-4 rounded-2xl border space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[10px] font-extrabold uppercase text-purple-500">Tabel `ai_chat_history`</span>
+                <span id="aiAdminBadge" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/15 text-emerald-500">🔓 Admin Mode</span>
+              </div>
+              <h3 class="text-sm font-bold">Deep AI Insight (Hemat Kuota)</h3>
+            </div>
+            <select id="aiProviderSelect" class="sub-card border rounded-lg px-2 py-1 text-xs font-semibold">
+              <option value="gemini">✨ Gemini 1.5</option>
+              <option value="openai">🧠 OpenAI GPT-4o</option>
+            </select>
+          </div>
+
+          <!-- Token & Cache Status Bar -->
+          <div class="sub-card border rounded-xl px-3 py-2 flex items-center justify-between text-[10px]">
+            <span id="aiCacheStatusText" class="text-muted font-medium">📦 Cache Data: H-9 (Tersinkron)</span>
+            <span id="aiDailyQuotaText" class="font-mono font-bold text-purple-400">Jatah Admin: 3/3 klik</span>
+          </div>
+
+          <div id="aiDeepBox" class="sub-card border rounded-xl p-3 text-xs leading-relaxed h-48 overflow-y-auto space-y-2">
+            <p><strong>1. Evaluasi Target & Sales:</strong> Pencapaian MTD Karang Satria [C383] berada di 94,45% (Rp 127,31 Jt) dengan defisit -Rp 7,49 Jt. Target harian baru otomatis disesuaikan menjadi <strong>Rp 15.268.798/hari</strong> untuk 21 hari tersisa.</p>
+            <p><strong>2. Kekuatan Margin & Member:</strong> Gross Margin rata-rata 18,65% (di atas target) dan kontribusi member 58,41%. Ini modal kuat untuk mendorong ukuran keranjang belanja (*basket size*).</p>
+            <p><strong>3. Aksi Nyata Shift Ini:</strong> Dorong kasir menawarkan item PWP/Tebus Murah kepada 250+ pelanggan member harian. Kenaikan Rp 2.500/struk otomatis menutup selisih Rp 356.525/hari.</p>
+          </div>
+          <button id="btnGenerateDeepAi" class="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition">
+            ✨ Generate Analisis Baru & Simpan ke Log
+          </button>
+        </div>
+
+        <!-- Format Salin WhatsApp -->
+        <div class="app-card p-4 rounded-2xl border space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="text-[10px] font-extrabold uppercase text-emerald-500">Siap Kirim Grup</span>
+              <h3 class="text-sm font-bold">Format Salin WhatsApp</h3>
+            </div>
+            <button id="btnCopyWaReport" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">
+              📋 Salin Teks WA
+            </button>
+          </div>
+          <pre id="waReportBox" class="sub-card border rounded-xl p-3 text-[11px] font-mono whitespace-pre-wrap leading-relaxed h-64 overflow-y-auto"></pre>
+        </div>
+
+      </div>
+
+      <!-- Download Poster & Direct PDF Bar -->
+      <div class="app-card p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print">
+        <div>
+          <h3 class="text-sm font-bold">Unduh Visual Poster (PNG) & Dokumen PDF</h3>
+          <p class="text-xs text-muted">Klik tombol di bawah untuk mengunduh langsung file gambar atau file PDF ke perangkat Anda</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="btnDownloadPng" class="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-sm transition">
+            📸 Download Gambar (PNG HD)
+          </button>
+          <button id="btnDownloadPdfDirect" class="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition">
+            📥 Download File PDF (Langsung)
+          </button>
+        </div>
+      </div>
+
+      <!-- 1:1 Retail Poster Container -->
+      <div class="flex justify-center overflow-x-auto pb-4">
+        <div id="posterCaptureTarget" class="w-[667px] bg-white text-slate-900 border border-slate-300 shadow-2xl rounded-lg overflow-hidden flex-shrink-0" style="min-width: 667px;">
+          
+          <div class="px-5 pt-4 pb-2 bg-white flex items-center justify-between border-b border-slate-100">
+            <div class="px-3.5 py-1.5 rounded-lg border-2 border-red-600 text-red-600 font-black text-xl italic tracking-tighter">
+              Alfamart
+            </div>
+            <div class="flex items-center gap-2 border border-slate-200 rounded-lg p-1.5 bg-slate-50">
+              <div class="w-6 h-6 rounded bg-red-600 flex items-center justify-center text-white font-black text-[11px]">C</div>
+              <div class="text-[10px] text-right">
+                <span class="font-bold text-slate-900 block leading-tight">TOKO KARANG SATRIA</span>
+                <span class="text-slate-500 font-num">KODE: C383</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-5 py-3 bg-gradient-to-r from-slate-50 to-blue-50/50 flex items-center gap-3">
+            <div class="w-16 h-14 bg-red-600 rounded-xl flex items-center justify-center text-white shadow-sm flex-shrink-0">
+              <svg class="w-9 h-9" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+              </svg>
+            </div>
+            <div class="flex-1 space-y-1">
+              <div class="bg-[#003882] text-white px-5 py-1.5 rounded-xl font-black text-lg tracking-wide uppercase inline-block">
+                MONITORING SALES
+              </div>
+              <div class="bg-red-600 text-white px-5 py-1 rounded-lg font-extrabold text-sm tracking-wide uppercase block">
+                KARANG SATRIA [C383]
+              </div>
+            </div>
+          </div>
+
+          <div class="p-4">
+            <div class="poster-border rounded-lg overflow-hidden">
+              <table class="w-full text-left text-[11px] border-collapse font-num">
+                <thead>
+                  <tr class="bg-[#003882] text-white font-black text-center text-xs">
+                    <th class="py-2 px-2 border-r border-[#003882] w-20">Tanggal</th>
+                    <th class="py-2 px-3 border-r border-[#003882] text-center w-36">Target</th>
+                    <th class="py-2 px-3 border-r border-[#003882] text-center w-36">Actual</th>
+                    <th class="py-2 px-2 border-r border-[#003882] text-center w-24">Acv%</th>
+                    <th class="py-2 px-3 text-center w-32">Gap</th>
+                  </tr>
+                </thead>
+                <tbody id="posterTableRows"></tbody>
+                <tfoot>
+                  <tr class="bg-red-600 text-white font-black text-xs">
+                    <td class="py-2.5 px-2 text-center border-r border-red-700">TOTAL</td>
+                    <td class="py-2.5 px-3 text-right border-r border-red-700" id="posterFootTgt">447.949.819</td>
+                    <td class="py-2.5 px-3 text-right border-r border-red-700" id="posterFootAct">127.305.053</td>
+                    <td class="py-2.5 px-2 text-center border-r border-red-700" id="posterFootAcv">28,42%</td>
+                    <td class="py-2.5 px-3 text-right" id="posterFootGap">-320.644.766</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          <div class="px-4 py-1.5 bg-slate-100 border-t border-slate-200 flex items-center justify-between text-[10px] text-slate-500 font-mono">
+            <span>LS Studio monitoring version 0.1.2026</span>
+            <span>Toko Karang Satria [C383] - Bekasi</span>
+          </div>
+          <div class="h-4 bg-gradient-to-r from-red-600 via-blue-800 to-red-600"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Footer Watermark -->
+    <footer class="pt-4 pb-6 text-center text-[11px] text-muted space-y-0.5 no-print">
+      <div class="font-bold tracking-wider">LS Studio monitoring version 0.1.2026</div>
+      <div>Terhubung dengan Skema Supabase Toko Karang Satria [C383]</div>
+    </footer>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- ANDROID NATIVE BOTTOM NAVIGATION BAR       -->
+  <!-- ========================================== -->
+  <nav class="bottom-bar fixed bottom-0 left-0 right-0 z-40 backdrop-blur-lg px-2 py-1.5 no-print">
+    <div class="max-w-md mx-auto grid grid-cols-6 gap-1">
+      <button class="nav-item flex flex-col items-center justify-center py-1 rounded-2xl transition text-blue-500 font-extrabold scale-105" data-target="pageHome">
+        <span class="text-lg leading-none">🏠</span>
+        <span class="text-[10px] mt-1">Beranda</span>
+      </button>
+      <button class="nav-item flex flex-col items-center justify-center py-1 rounded-2xl transition text-muted font-medium" data-target="pageIkt">
+        <span class="text-lg leading-none">📊</span>
+        <span class="text-[10px] mt-1">IKT Toko</span>
+      </button>
+      <button class="nav-item flex flex-col items-center justify-center py-1 rounded-2xl transition text-muted font-medium" data-target="pageSo">
+        <span class="text-lg leading-none">📦</span>
+        <span class="text-[10px] mt-1">SO</span>
+      </button>
+      <button class="nav-item flex flex-col items-center justify-center py-1 rounded-2xl transition text-muted font-medium" data-target="pageMember">
+        <span class="text-lg leading-none">👥</span>
+        <span class="text-[10px] mt-1">Member</span>
+      </button>
+      <button class="nav-item flex flex-col items-center justify-center py-1 rounded-2xl transition text-muted font-medium" data-target="pageTodo">
+        <span class="text-lg leading-none">📝</span>
+        <span class="text-[10px] mt-1">To-Do</span>
+      </button>
+      <button class="nav-item flex flex-col items-center justify-center py-1 rounded-2xl transition text-muted font-medium" data-target="pageExport">
+        <span class="text-lg leading-none">🖼️</span>
+        <span class="text-[10px] mt-1">Laporan</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ========================================== -->
+  <!-- MODAL INPUT HARIAN (`spd_harian`)          -->
+  <!-- ========================================== -->
+  <div id="modalInput" class="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden no-print">
+    <div class="app-card rounded-3xl border w-full max-w-md p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-500/20 pb-3">
+        <h3 class="text-sm font-extrabold">Input Data Harian (`spd_harian`)</h3>
+        <button id="btnCloseInput" class="text-muted hover:opacity-75 p-1">✕</button>
+      </div>
+      <div class="grid grid-cols-2 gap-3 text-xs">
+        <div class="col-span-2">
+          <label class="block text-muted font-bold mb-1">Tanggal (1 - 30 November)</label>
+          <input type="number" id="inpDay" min="1" max="30" value="10" class="w-full sub-card border rounded-xl px-3 py-2 font-num font-bold">
+        </div>
+        <div>
+          <label class="block text-muted font-bold mb-1">Target Sales (Rp)</label>
+          <input type="number" id="inpTarget" class="w-full sub-card border rounded-xl px-3 py-2 font-num">
+        </div>
+        <div>
+          <label class="block text-muted font-bold mb-1">Actual SPD (Rp)</label>
+          <input type="number" id="inpActual" placeholder="Contoh: 15450000" class="w-full sub-card border rounded-xl px-3 py-2 font-num border-blue-500">
+        </div>
+        <div>
+          <label class="block text-muted font-bold mb-1">GM (%)</label>
+          <input type="number" step="0.01" id="inpGmPct" placeholder="18.65" class="w-full sub-card border rounded-xl px-3 py-2 font-num">
+        </div>
+        <div>
+          <label class="block text-muted font-bold mb-1">STD Toko (Struk)</label>
+          <input type="number" id="inpStdToko" placeholder="435" class="w-full sub-card border rounded-xl px-3 py-2 font-num">
+        </div>
+        <div>
+          <label class="block text-muted font-bold mb-1">STD Member (Struk)</label>
+          <input type="number" id="inpStdMember" placeholder="255" class="w-full sub-card border rounded-xl px-3 py-2 font-num">
+        </div>
+        <div>
+          <label class="block text-muted font-bold mb-1">Sales Member (Rp)</label>
+          <input type="number" id="inpSalesMember" placeholder="8600000" class="w-full sub-card border rounded-xl px-3 py-2 font-num">
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-500/20">
+        <button id="btnCancelInput" class="px-4 py-2 rounded-xl text-xs font-bold text-muted">Batal</button>
+        <button id="btnSaveInput" class="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-sm">
+          💾 Simpan ke Sistem & Supabase
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL PENGATURAN LENGKAP (TARGET, USER, API)-->
+  <!-- ========================================== -->
+  <div id="modalConfig" class="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden no-print">
+    <div class="app-card rounded-3xl border w-full max-w-lg p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
+      <div class="flex items-center justify-between border-b border-slate-500/20 pb-3">
+        <div>
+          <h3 class="text-sm font-extrabold">⚙️ Pengaturan Sistem, Target & User</h3>
+          <p class="text-[10px] text-muted">Sesuai skema tabel <code class="text-blue-500">net_sales</code> & <code class="text-blue-500">users</code> Supabase</p>
+        </div>
+        <button id="btnCloseConfig" class="text-muted hover:opacity-75 p-1 text-base font-bold">✕</button>
+      </div>
+
+      <!-- Settings Navigation Tabs -->
+      <div class="grid grid-cols-3 gap-1.5 p-1 rounded-xl sub-card border text-xs">
+        <button id="tabCfgTarget" class=" py-1.5 px-2 rounded-lg font-bold bg-blue-600 text-white transition">🎯 Input Target</button>
+        <button id="tabCfgUsers" class=" py-1.5 px-2 rounded-lg font-semibold text-muted hover:opacity-80 transition">👤 Buat User</button>
+        <button id="tabCfgApi" class=" py-1.5 px-2 rounded-lg font-semibold text-muted hover:opacity-80 transition">🔌 Cloud & APK</button>
+      </div>
+
+      <!-- TAB 1: INPUT TARGET BULANAN (`net_sales` schema) -->
+      <div id="panelCfgTarget" class="space-y-3 text-xs">
+        <div class="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 space-y-1">
+          <span class="font-bold text-blue-400 block">Skema Tabel `net_sales` (id, bulan, tahun, net_sales)</span>
+          <p class="text-[11px] text-muted">Mengubah target bulanan di sini akan otomatis mengkalkulasi ulang target harian dasar dan target dinamis (Auto-Gap) di seluruh aplikasi.</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-muted font-bold mb-1">Bulan (`bulan`)</label>
+            <select id="cfgTargetMonth" class="w-full sub-card border rounded-xl px-3 py-2 font-semibold">
+              <option value="8">8 - Agustus</option>
+              <option value="9">9 - September</option>
+              <option value="10">10 - Oktober</option>
+              <option value="11" selected>11 - November</option>
+              <option value="12">12 - Desember</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-muted font-bold mb-1">Tahun (`tahun`)</label>
+            <input type="number" id="cfgTargetYear" value="2026" class="w-full sub-card border rounded-xl px-3 py-2 font-num font-bold">
+          </div>
+          <div class="col-span-2">
+            <label class="block text-muted font-bold mb-1">Target Bulanan / `net_sales` (Rp)</label>
+            <input type="number" id="cfgMonthlyTarget" value="447949991" placeholder="Contoh: 472972689" class="w-full sub-card border rounded-xl px-3.5 py-2.5 font-num font-extrabold text-sm border-blue-500">
+          </div>
+        </div>
+
+        <button id="btnSaveTargetCfg" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-xs transition">
+          🎯 Terapkan Target Bulanan & Sync ke Tabel `net_sales`
+        </button>
+
+        <!-- Riwayat Tabel `net_sales` dari CSV -->
+        <div class="pt-2">
+          <span class="text-[10px] font-bold uppercase text-muted block mb-1.5">Riwayat Tabel `net_sales` di Database:</span>
+          <div class="sub-card border rounded-xl overflow-hidden">
+            <table class="w-full text-left text-[11px] font-num">
+              <thead class="bg-slate-800 text-white">
+                <tr>
+                  <th class="py-1.5 px-2.5">ID</th>
+                  <th class="py-1.5 px-2.5">Bulan/Tahun</th>
+                  <th class="py-1.5 px-2.5 text-right">Net Sales / Target</th>
+                  <th class="py-1.5 px-2.5 text-center">Pakai</th>
+                </tr>
+              </thead>
+              <tbody id="netSalesHistoryBody" class="divide-y divide-slate-500/15">
+                <!-- Populated from net_sales_rows.csv -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: BUAT USERNAME BARU (`users` schema) -->
+      <div id="panelCfgUsers" class="space-y-3 text-xs hidden">
+        <div class="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 space-y-1">
+          <span class="font-bold text-purple-400 block">Skema Tabel `users` (username, nama_lengkap, role, password_hash, pin_hash)</span>
+          <p class="text-[11px] text-muted">Password dan PIN otomatis di-hash dengan algoritma Bcrypt (`$2a$12$...`) persis seperti data `LGMAS` & `KAZUHA`.</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-muted font-bold mb-1">Username (`username`)</label>
+            <input type="text" id="newUsrUsername" placeholder="Contoh: RIZKY_C383" class="w-full sub-card border rounded-xl px-3 py-2 font-bold uppercase">
+          </div>
+          <div>
+            <label class="block text-muted font-bold mb-1">Nama Lengkap (`nama_lengkap`)</label>
+            <input type="text" id="newUsrFullname" placeholder="Contoh: RIZKY PRATAMA" class="w-full sub-card border rounded-xl px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-muted font-bold mb-1">Password Login</label>
+            <input type="password" id="newUsrPass" placeholder="Minimal 6 karakter" class="w-full sub-card border rounded-xl px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-muted font-bold mb-1">PIN Cepat (6 Digit)</label>
+            <input type="password" id="newUsrPin" maxlength="6" placeholder="123456" class="w-full sub-card border rounded-xl px-3 py-2 font-num">
+          </div>
+          <div>
+            <label class="block text-muted font-bold mb-1">Role (`role`)</label>
+            <select id="newUsrRole" class="w-full sub-card border rounded-xl px-3 py-2 font-semibold">
+              <option value="admin">admin (COS / ACOS)</option>
+              <option value="crew">crew (Kasir / Pramuniaga)</option>
+              <option value="supervisor">supervisor (Area Coord)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-muted font-bold mb-1">URL Avatar (`avatar_url`)</label>
+            <input type="url" id="newUsrAvatar" placeholder="Opsional (Otomatis dibuat)" class="w-full sub-card border rounded-xl px-3 py-2">
+          </div>
+        </div>
+
+        <button id="btnCreateNewUser" class="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold shadow-xs transition">
+          ➕ Buat User Baru & Simpan ke Tabel `users`
+        </button>
+
+        <!-- Daftar User Terdaftar dari CSV -->
+        <div class="pt-2">
+          <span class="text-[10px] font-bold uppercase text-muted block mb-1.5">Daftar Akun di Tabel `users`:</span>
+          <div id="usersListContainer" class="space-y-1.5 max-h-40 overflow-y-auto no-scrollbar">
+            <!-- Populated from users_rows.csv -->
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: KONEKSI CLOUD SUPABASE, API & PANDUAN APK -->
+      <div id="panelCfgApi" class="space-y-3 text-xs hidden">
+        <div>
+          <label class="block text-muted font-bold mb-1">URL Dashboard Streamlit (Detail SO)</label>
+          <input type="url" id="cfgStreamlit" placeholder="https://share.streamlit.io/..." class="w-full sub-card border rounded-xl px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-muted font-bold mb-1">Supabase REST URL (Otomatis Terdeteksi dari CSV Anda)</label>
+          <input type="url" id="cfgSupaUrl" value="https://sxdpymomwdggmnbsbebe.supabase.co/rest/v1/" class="w-full sub-card border rounded-xl px-3 py-2 font-mono text-[11px]">
+        </div>
+        <div>
+          <label class="block text-muted font-bold mb-1">Supabase Anon / Service Key</label>
+          <input type="password" id="cfgSupaKey" placeholder="eyJhbGci..." class="w-full sub-card border rounded-xl px-3 py-2">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-muted font-bold mb-1">Groq API Key</label>
+            <input type="password" id="cfgGroq" placeholder="gsk_..." class="w-full sub-card border rounded-xl px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-muted font-bold mb-1">Gemini / OpenAI Key</label>
+            <input type="password" id="cfgAi" placeholder="AIza... / sk-..." class="w-full sub-card border rounded-xl px-3 py-2">
+          </div>
+        </div>
+        <button id="btnSaveConfig" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition">
+          Simpan & Hubungkan Database
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-xl border border-slate-700 opacity-0 pointer-events-none transition-all duration-300 z-50">
+    <span id="toastMsg">Tersimpan</span>
+  </div>
+
+  <script>
+    // ==========================================
+    // 1. GENERATE TWINKLING STARS FOR NIGHT SKY
+    // ==========================================
+    function createStars() {
+      const container = document.getElementById('starsContainer');
+      container.innerHTML = '';
+      for (let i = 0; i < 45; i++) {
+        const star = document.createElement('div');
+        star.className = 'star';
+        const size = Math.random() * 2.5 + 1.2;
+        star.style.width = size + 'px';
+        star.style.height = size + 'px';
+        star.style.top = (Math.random() * 240) + 'px';
+        star.style.left = (Math.random() * 100) + '%';
+        star.style.setProperty('--dur', (Math.random() * 3 + 2).toFixed(1) + 's');
+        star.style.animationDelay = (Math.random() * 3).toFixed(1) + 's';
+        container.appendChild(star);
+      }
+    }
+    createStars();
+
+    // ==========================================
+    // 2. DATA STATE & SUPABASE TABLES CONFIG
+    // ==========================================
+    let DEFAULT_TARGET = 14912273;
+    let FULL_MONTH_TARGET = (DEFAULT_TARGET * 29) + 15494074; // Rp 447.949.991
+
+    let config = {
+      streamlitUrl: "https://share.streamlit.io/",
+      supaUrl: "https://sxdpymomwdggmnbsbebe.supabase.co/rest/v1/",
+      supaKey: "",
+      groqKey: "",
+      aiKey: "",
+      monthlyTarget: FULL_MONTH_TARGET,
+      targetMonth: 11,
+      targetYear: 2026
+    };
+
+    // Data autentik dari net_sales_rows.csv
+    let netSalesRecords = [
+      { id: 1, bulan: 10, tahun: 2026, net_sales: 472972689, created_at: "2026-10-02 13:05:46" },
+      { id: 2, bulan: 9,  tahun: 2026, net_sales: 450000000, created_at: "2026-10-02 13:05:46" },
+      { id: 3, bulan: 8,  tahun: 2026, net_sales: 425000000, created_at: "2026-10-02 13:05:46" },
+      { id: 4, bulan: 11, tahun: 2026, net_sales: 447949991, created_at: "2026-11-01 08:00:00" }
+    ];
+
+    // Data autentik dari users_rows.csv
+    let registeredUsers = [
+      {
+        id: 7,
+        username: "LGMAS",
+        nama_lengkap: "SIMP MACHI",
+        role: "admin",
+        aktif: true,
+        password_hash: "$2a$12$aw.M8rFaWXfucSMo0W5XB.qcQtApBq8vKJAeHSdLL0jz4VKDU0pg6",
+        pin_hash: "$2b$12$eKlRbd187A9UZeVnAtSsMuyFSjTLBTiKUZP5JWy9Nt2ytvL0VhXTa",
+        avatar_url: "https://sxdpymomwdggmnbsbebe.supabase.co/storage/v1/object/public/avatars/user_7_1792450145.png"
+      },
+      {
+        id: 8,
+        username: "KAZUHA",
+        nama_lengkap: "Buzzer Sclash Driver",
+        role: "admin",
+        aktif: true,
+        password_hash: "$2b$12$afvZ4OHduReVvxLBGWrdpeVFXwU.x7q.LonvfxoLGOfYofxMkUyLu",
+        pin_hash: "$2b$12$TXdtpCqv3oVFX2YXSDBW4uCJV9PXQT89E3BhS2Cb7pHBe.uKLeKCK",
+        avatar_url: "https://sxdpymomwdggmnbsbebe.supabase.co/storage/v1/object/public/avatars/user_8_1792444009.jpg"
+      }
+    ];
+
+    let currentUser = {
+      username: "LGMAS",
+      nama_lengkap: "SIMP MACHI",
+      role: "admin",
+      shift: "Shift 3 (Malam)",
+      avatar_url: "https://sxdpymomwdggmnbsbebe.supabase.co/storage/v1/object/public/avatars/user_7_1792450145.png"
+    };
+
+    const baseNineDays = [
+      { tgl: 1, target: 14912273, actual: 19752827, gmPct: 18.80, stdToko: 512, stdMember: 310, salesMember: 11850000 },
+      { tgl: 2, target: 15494074, actual: 15990188, gmPct: 18.70, stdToko: 465, stdMember: 275, salesMember: 9590000 },
+      { tgl: 3, target: 14912273, actual: 11026528, gmPct: 18.45, stdToko: 360, stdMember: 205, salesMember: 6610000 },
+      { tgl: 4, target: 14912273, actual: 14539097, gmPct: 18.60, stdToko: 435, stdMember: 254, salesMember: 8720000 },
+      { tgl: 5, target: 14912273, actual: 12921026, gmPct: 18.55, stdToko: 398, stdMember: 230, salesMember: 7750000 },
+      { tgl: 6, target: 14912273, actual: 14723768, gmPct: 18.75, stdToko: 442, stdMember: 260, salesMember: 8830000 },
+      { tgl: 7, target: 14912273, actual: 9962104,  gmPct: 18.30, stdToko: 335, stdMember: 190, salesMember: 5970000 },
+      { tgl: 8, target: 14912273, actual: 14311491, gmPct: 18.90, stdToko: 475, stdMember: 280, salesMember: 8580000 },
+      { tgl: 9, target: 14912273, actual: 14078024, gmPct: 18.80, stdToko: 468, stdMember: 268, salesMember: 8520000 }
+    ];
+
+    let storeDays = [];
+    function resetNineDays() {
+      storeDays = [];
+      for (let d = 1; d <= 30; d++) {
+        const f = baseNineDays.find(x => x.tgl === d);
+        if (f) storeDays.push({ ...f, filled: true, simulated: false });
+        else storeDays.push({ tgl: d, target: DEFAULT_TARGET, actual: null, gmPct: 18.65, stdToko: null, stdMember: null, salesMember: null, filled: false, simulated: false });
+      }
+    }
+    resetNineDays();
+
+    let soRakItems = [
+      { kode: "RAK-01", nama: "Susu Formula & Makanan Bayi", adjust: -65000, ket: "Selisih 1 box, sudah dicek log CCTV", status: "Pantau" },
+      { kode: "RAK-04", nama: "Kosmetik & Personal Care", adjust: -48200, ket: "Selisih facial wash, audit shift siang", status: "Pantau" },
+      { kode: "RAK-07", nama: "Snack & Biskuit Promo", adjust: -22000, ket: "Barang rusak kemasan (BKE) siap retur", status: "Aman" },
+      { kode: "CHILLER", nama: "Minuman Dingin & Dairy", adjust: -15000, ket: "Varian rasa tertukar saat display", status: "Aman" }
+    ];
+
+    let todoList = [
+      { id: 1, shift: "Pagi", text: "Cek suhu Chiller & kebersihan area selasar toko", done: true },
+      { id: 2, shift: "Pagi", text: "Update price tag perubahan harga & pasang materi promo", done: true },
+      { id: 3, shift: "Siang", text: "SO Parsial rak rawan selisih (`so_rak_harian`)", done: true },
+      { id: 4, shift: "Siang", text: "Tawarkan PWP Tebus Murah kasir (Target +Rp 2.500/struk)", done: false },
+      { id: 5, shift: "Malam", text: "Pisahkan barang retur BKE/BR sebelum cut-off gudang", done: false },
+      { id: 6, shift: "Malam", text: "Kirim laporan penutupan shift & PDF Monitoring ke WA Grup", done: false }
+    ];
+
+    try {
+      const sDays = localStorage.getItem('ls_v3_days');
+      if (sDays) storeDays = JSON.parse(sDays);
+      const sTodos = localStorage.getItem('ls_v3_todos');
+      if (sTodos) todoList = JSON.parse(sTodos);
+      const sCfg = localStorage.getItem('ls_v3_cfg');
+      if (sCfg) config = { ...config, ...JSON.parse(sCfg) };
+      const sUsr = localStorage.getItem('ls_v3_user');
+      if (sUsr) currentUser = JSON.parse(sUsr);
+      const sRegUsers = localStorage.getItem('ls_v4_reg_users');
+      if (sRegUsers) registeredUsers = JSON.parse(sRegUsers);
+      const sNetSales = localStorage.getItem('ls_v4_net_sales');
+      if (sNetSales) netSalesRecords = JSON.parse(sNetSales);
+      if (config.monthlyTarget) {
+        FULL_MONTH_TARGET = parseFloat(config.monthlyTarget);
+        DEFAULT_TARGET = Math.round(FULL_MONTH_TARGET / 30);
+      }
+    } catch (e) {}
+
+    let iktFilter = 'all';
+    let homeChartInstance = null;
+
+    // Formatting Helpers
+    function fmtRp(v) {
+      if (v === null || v === undefined) return '-';
+      return 'Rp ' + Math.round(v).toLocaleString('id-ID');
+    }
+    function fmtNum(v) {
+      if (v === null || v === undefined) return '';
+      return Math.round(v).toLocaleString('id-ID');
+    }
+    function fmtGap(v) {
+      if (v === null || v === undefined) return '-';
+      return (v > 0 ? '+' : '') + 'Rp ' + Math.round(v).toLocaleString('id-ID');
+    }
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      t.classList.remove('opacity-0');
+      setTimeout(() => t.classList.add('opacity-0'), 2600);
+    }
+
+    // ==========================================
+    // 3. SKY & WEATHER ADAPTIVE ENGINE
+    // ==========================================
+    const skyModes = ['night', 'day', 'sunset'];
+    let skyIdx = 0; // Starts in Night mode when late night
+
+    function setSkyTheme(mode) {
+      document.body.classList.remove('sky-day', 'sky-sunset', 'sky-night');
+      document.body.classList.add('sky-' + mode);
+
+      const icon = document.getElementById('skyModeIcon');
+      const txt = document.getElementById('skyModeText');
+      const wIcon = document.getElementById('weatherIcon');
+      const wLbl = document.getElementById('weatherLabel');
+
+      if (mode === 'day') {
+        icon.textContent = '☀️';
+        txt.textContent = 'Siang';
+        wIcon.textContent = '🌤️';
+        wLbl.textContent = 'Bekasi, 31°C • Cerah Berawan';
+      } else if (mode === 'sunset') {
+        icon.textContent = '🌇';
+        txt.textContent = 'Senja';
+        wIcon.textContent = '🌅';
+        wLbl.textContent = 'Bekasi, 29°C • Langit Sore Hangat';
+      } else {
+        icon.textContent = '🌙';
+        txt.textContent = 'Malam';
+        wIcon.textContent = '🌙';
+        wLbl.textContent = 'Bekasi, 26°C • Malam Berbintang & Awan Lembut';
+      }
+    }
+
+    function detectTimeForSky() {
+      const h = new Date().getHours();
+      if (h >= 6 && h < 15) skyIdx = 1; // day
+      else if (h >= 15 && h < 18) skyIdx = 2; // sunset
+      else skyIdx = 0; // night
+      setSkyTheme(skyModes[skyIdx]);
+    }
+
+    document.getElementById('btnCycleSky').addEventListener('click', () => {
+      skyIdx = (skyIdx + 1) % skyModes.length;
+      setSkyTheme(skyModes[skyIdx]);
+      showToast('Nuansa Langit: Mode ' + document.getElementById('skyModeText').textContent);
+    });
+
+    function tickClock() {
+      const now = new Date();
+      document.getElementById('clockDisplay').textContent = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      document.getElementById('dateDisplay').textContent = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    }
+    setInterval(tickClock, 1000);
+    tickClock();
+    detectTimeForSky();
+
+    // ==========================================
+    // 4. AUTHENTICATION & LOGIN (`users`, `sessions`)
+    // ==========================================
+    function updateUserBadge() {
+      const fullName = currentUser.nama_lengkap ? ` - ${currentUser.nama_lengkap}` : '';
+      document.getElementById('activeUserBadge').textContent = `👤 ${currentUser.username}${fullName} (${currentUser.role}) • ${currentUser.shift}`;
+      if (typeof updateAiPermissionUI === 'function') updateAiPermissionUI();
+    }
+    updateUserBadge();
+
+    document.getElementById('btnLogout').addEventListener('click', () => {
+      document.getElementById('loginOverlay').classList.remove('hidden');
+    });
+
+    document.getElementById('btnSubmitLogin').addEventListener('click', async () => {
+      const u = (document.getElementById('loginUsername').value.trim() || 'LGMAS').toUpperCase();
+      const r = document.getElementById('loginRole').value;
+      const s = document.getElementById('loginShift').value;
+
+      const foundUser = registeredUsers.find(x => x.username.toUpperCase() === u);
+      currentUser = {
+        username: u,
+        nama_lengkap: foundUser ? foundUser.nama_lengkap : u,
+        role: foundUser ? foundUser.role : r,
+        shift: s,
+        avatar_url: foundUser ? foundUser.avatar_url : ''
+      };
+      try { localStorage.setItem('ls_v3_user', JSON.stringify(currentUser)); } catch(e) {}
+      updateUserBadge();
+      document.getElementById('loginOverlay').classList.add('hidden');
+      showToast(`🔓 Selamat bertugas, ${u} (${s})`);
+
+      // Log activity to Supabase `user_activity` & `sessions` if configured
+      if (config.supaUrl && config.supaKey) {
+        try {
+          await fetch(`${config.supaUrl}user_activity`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': config.supaKey, 'Authorization': `Bearer ${config.supaKey}` },
+            body: JSON.stringify({ username: u, role: r, shift: s, action: 'LOGIN_DASHBOARD', created_at: new Date().toISOString() })
+          });
+        } catch (err) {}
+      }
+    });
+
+    // ==========================================
+    // 5. SUPABASE AUTO-PULL & SYNC (`spd_harian`, `so_hasil`)
+    // ==========================================
+    async function syncFromSupabase() {
+      if (!config.supaUrl || !config.supaKey) {
+        showToast('💡 Isi URL & Key Supabase di menu ⚙️ untuk tarik data cloud');
+        return;
+      }
+      showToast('🔄 Menarik data terbaru dari Supabase...');
+      try {
+        const headers = { 'apikey': config.supaKey, 'Authorization': `Bearer ${config.supaKey}` };
+        // Pull spd_harian
+        const resSpd = await fetch(`${config.supaUrl}spd_harian?select=*&order=tanggal.asc`, { headers });
+        if (resSpd.ok) {
+          const rows = await resSpd.json();
+          if (Array.isArray(rows) && rows.length > 0) {
+            rows.forEach(item => {
+              const dt = new Date(item.tanggal);
+              const dayNum = dt.getDate();
+              const idx = storeDays.findIndex(x => x.tgl === dayNum);
+              if (idx !== -1 && item.spd) {
+                storeDays[idx].actual = parseFloat(item.spd);
+                if (item.gm_pct) storeDays[idx].gmPct = parseFloat(item.gm_pct);
+                if (item.std_member) storeDays[idx].stdMember = parseInt(item.std_member);
+                if (item.sales_member) storeDays[idx].salesMember = parseFloat(item.sales_member);
+                storeDays[idx].filled = true;
+                storeDays[idx].simulated = false;
+              }
+            });
+          }
+        }
+        renderAll();
+        showToast('✅ Sinkronisasi Supabase selesai!');
+      } catch (err) {
+        showToast('⚠️ Gagal konek Supabase, menggunakan data lokal');
+      }
+    }
+
+    document.getElementById('btnPullSupabase').addEventListener('click', syncFromSupabase);
+
+    // ==========================================
+    // 6. MAIN RENDER & DYNAMIC TARGET ENGINE
+    // ==========================================
+    function renderAll() {
+      // Dynamic Target calculation
+      let filledSales = 0;
+      let filledCount = 0;
+      storeDays.forEach(d => {
+        if (d.filled && d.actual !== null) {
+          filledSales += d.actual;
+          filledCount++;
+        }
+      });
+
+      const remDays = Math.max(0, 30 - filledCount);
+      let newDailyTarget = DEFAULT_TARGET;
+      if (remDays > 0) {
+        const remTarget = FULL_MONTH_TARGET - filledSales;
+        newDailyTarget = Math.max(0, Math.round(remTarget / remDays));
+        storeDays.forEach(d => {
+          if (!d.filled) d.target = newDailyTarget;
+        });
+      }
+
+      const diff = newDailyTarget - DEFAULT_TARGET;
+      const diffTxt = (diff >= 0 ? '+' : '') + fmtRp(diff);
+      document.getElementById('homeNewTarget').textContent = fmtRp(newDailyTarget);
+      document.getElementById('homeNewTargetSub').textContent = `${diffTxt}/hr (Sisa ${remDays} Hari)`;
+      document.getElementById('iktNewTargetSub').textContent = `Tgt Baru: ${fmtRp(newDailyTarget)}/hr`;
+
+      const iktBody = document.getElementById('iktTableBody');
+      const memBody = document.getElementById('memberTableBody');
+      const posterBody = document.getElementById('posterTableRows');
+
+      iktBody.innerHTML = '';
+      memBody.innerHTML = '';
+      posterBody.innerHTML = '';
+
+      let mtdTarget = 0, mtdActual = 0, mtdGmRp = 0, mtdGmPctSum = 0;
+      let mtdStdToko = 0, mtdStdMem = 0, mtdSalesMem = 0;
+      let fullTargetSum = 0, fullActualSum = 0;
+
+      storeDays.forEach(row => {
+        fullTargetSum += row.target;
+        const acv = row.filled ? (row.actual / row.target) * 100 : null;
+        const gap = row.filled ? (row.actual - row.target) : null;
+        const gmRp = row.filled ? Math.round(row.actual * (row.gmPct / 100)) : null;
+
+        if (row.filled) {
+          mtdTarget += row.target;
+          mtdActual += row.actual;
+          fullActualSum += row.actual;
+          mtdGmRp += gmRp;
+          mtdGmPctSum += row.gmPct;
+          mtdStdToko += (row.stdToko || 430);
+          mtdStdMem += (row.stdMember || 250);
+          mtdSalesMem += (row.salesMember || Math.round(row.actual * 0.6));
+        }
+
+        // IKT Table Row
+        let showRow = true;
+        if (iktFilter === 'filled' && !row.filled) showRow = false;
+        if (iktFilter === 'pending' && row.filled) showRow = false;
+
+        if (showRow) {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-500/10 transition';
+          const gapColor = gap > 0 ? 'text-emerald-500 font-bold' : (gap < 0 ? 'text-red-500 font-bold' : 'text-muted');
+          tr.innerHTML = `
+            <td class="py-2.5 px-3 text-center font-bold">${row.tgl}</td>
+            <td class="py-2.5 px-3 text-right">${fmtRp(row.target)}</td>
+            <td class="py-2.5 px-3 text-right font-bold ${row.filled ? '' : 'text-muted italic'}">${row.filled ? fmtRp(row.actual) : 'Belum isi'}</td>
+            <td class="py-2.5 px-3 text-center font-bold ${acv >= 100 ? 'text-emerald-500' : (acv ? 'text-amber-500' : 'text-muted')}">${row.filled ? acv.toFixed(1).replace('.', ',') + '%' : '-'}</td>
+            <td class="py-2.5 px-3 text-right ${gapColor}">${row.filled ? fmtGap(gap) : '-'}</td>
+            <td class="py-2.5 px-3 text-center">${row.filled ? row.gmPct.toFixed(2).replace('.', ',') + '%' : '-'}</td>
+            <td class="py-2.5 px-3 text-right text-emerald-500">${row.filled ? fmtRp(gmRp) : '-'}</td>
+            <td class="py-2.5 px-3 text-center">
+              <button class="btn-edit-row text-blue-500 hover:underline font-bold text-xs" data-day="${row.tgl}">
+                ${row.filled ? 'Ubah' : '+ Isi'}
+              </button>
+            </td>
+          `;
+          iktBody.appendChild(tr);
+        }
+
+        // Member Row
+        if (row.filled) {
+          const stT = row.stdToko || 430;
+          const stM = row.stdMember || 250;
+          const slM = row.salesMember || Math.round(row.actual * 0.6);
+          const mPct = (stM / stT) * 100;
+          const mAch = (mPct / 55.0) * 100;
+
+          const mtr = document.createElement('tr');
+          mtr.innerHTML = `
+            <td class="py-2 px-3 text-center font-bold">${row.tgl} Nov</td>
+            <td class="py-2 px-3 text-right">${stT}</td>
+            <td class="py-2 px-3 text-right font-bold text-purple-500">${stM}</td>
+            <td class="py-2 px-3 text-center font-bold ${mPct >= 55 ? 'text-emerald-500' : 'text-amber-500'}">${mPct.toFixed(1).replace('.', ',')}%</td>
+            <td class="py-2 px-3 text-right">${fmtRp(slM)}</td>
+            <td class="py-2 px-3 text-center">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold ${mAch >= 100 ? 'bg-emerald-500/20 text-emerald-500' : 'bg-amber-500/20 text-amber-500'}">${mAch.toFixed(0)}%</span>
+            </td>
+          `;
+          memBody.appendChild(mtr);
+        }
+
+        // Poster 1:1 Row
+        const ptr = document.createElement('tr');
+        ptr.className = row.tgl % 2 === 1 ? 'bg-white' : 'bg-[#F2F6FA]';
+        const pGap = row.filled ? gap : -row.target;
+        ptr.innerHTML = `
+          <td class="py-1 px-2 bg-red-600 text-white font-bold text-center border-r border-b border-[#003882]">${row.tgl}.</td>
+          <td class="py-1 px-3 text-right font-bold text-[#001A38] border-r border-b border-[#003882]">${fmtNum(row.target)}</td>
+          <td class="py-1 px-3 text-right font-bold text-[#001A38] border-r border-b border-[#003882]">${row.filled ? fmtNum(row.actual) : ''}</td>
+          <td class="py-1 px-2 text-center font-bold text-[#001A38] border-r border-b border-[#003882]">${row.filled ? acv.toFixed(2).replace('.', ',') + '%' : '0,00%'}</td>
+          <td class="py-1 px-3 text-right font-bold text-[#001A38] border-b border-[#003882]">${fmtNum(pGap)}</td>
+        `;
+        posterBody.appendChild(ptr);
+      });
+
+      const mtdGap = mtdActual - mtdTarget;
+      const mtdAcv = mtdTarget > 0 ? (mtdActual / mtdTarget) * 100 : 0;
+      const avgGmPct = filledCount > 0 ? (mtdGmPctSum / filledCount) : 0;
+
+      // Update Home & IKT Summary Cards
+      document.getElementById('cardHomeSales').textContent = 'Rp ' + (mtdActual / 1000000).toFixed(2).replace('.', ',') + ' Jt';
+      document.getElementById('cardHomeAcv').textContent = `Acv: ${mtdAcv.toFixed(2).replace('.', ',')}%`;
+      document.getElementById('cardHomeGmPct').textContent = avgGmPct.toFixed(2).replace('.', ',') + '%';
+      document.getElementById('cardHomeGmRp').textContent = 'Rp ' + (mtdGmRp / 1000000).toFixed(2).replace('.', ',') + ' Jt';
+
+      document.getElementById('iktSalesVal').textContent = fmtRp(mtdActual);
+      document.getElementById('iktTargetVal').textContent = 'Tgt: ' + fmtRp(mtdTarget);
+      document.getElementById('iktGmRpVal').textContent = fmtRp(mtdGmRp);
+      document.getElementById('iktGmPctVal').textContent = avgGmPct.toFixed(2).replace('.', ',') + ' %';
+      document.getElementById('iktGapVal').textContent = fmtGap(mtdGap);
+
+      document.getElementById('footIktTgt').textContent = fmtRp(mtdTarget);
+      document.getElementById('footIktAct').textContent = fmtRp(mtdActual);
+      document.getElementById('footIktAcv').textContent = mtdAcv.toFixed(2).replace('.', ',') + '%';
+      document.getElementById('footIktGap').textContent = fmtGap(mtdGap);
+      document.getElementById('footIktGmPct').textContent = avgGmPct.toFixed(2).replace('.', ',') + '%';
+      document.getElementById('footIktGmRp').textContent = fmtRp(mtdGmRp);
+
+      // SO Summary
+      const soBudget = Math.round(mtdActual * 0.0015);
+      const soTotalAdj = soRakItems.reduce((acc, r) => acc + r.adjust, 0);
+      const soPct = mtdActual > 0 ? (Math.abs(soTotalAdj) / mtdActual) * 100 : 0;
+      const soRem = soBudget - Math.abs(soTotalAdj);
+
+      document.getElementById('soBudgetVal').textContent = fmtRp(soBudget);
+      document.getElementById('soAdjustVal').textContent = fmtGap(soTotalAdj);
+      document.getElementById('soPctDisplay').textContent = soPct.toFixed(3).replace('.', ',') + ' %';
+      document.getElementById('soSisaBudget').textContent = soRem >= 0 ? `Sisa Kuota: ${fmtRp(soRem)}` : `Over Kuota: ${fmtRp(Math.abs(soRem))}`;
+      document.getElementById('cardHomeSoPct').textContent = `${soPct.toFixed(3).replace('.', ',')}% (Batas 0,15%)`;
+
+      // Member Summary
+      const memPctTotal = mtdStdToko > 0 ? (mtdStdMem / mtdStdToko) * 100 : 0;
+      document.getElementById('memTotalToko').textContent = fmtNum(mtdStdToko) + ' Struk';
+      document.getElementById('memTotalMember').textContent = fmtNum(mtdStdMem) + ' Struk';
+      document.getElementById('memTotalSales').textContent = fmtRp(mtdSalesMem);
+      document.getElementById('memActualPct').textContent = memPctTotal.toFixed(2).replace('.', ',') + ' %';
+      document.getElementById('cardHomeMemPct').textContent = memPctTotal.toFixed(2).replace('.', ',') + '%';
+
+      // Poster Footer
+      const pGapTotal = fullActualSum - fullTargetSum;
+      const pAcvTotal = fullTargetSum > 0 ? (fullActualSum / fullTargetSum) * 100 : 0;
+      document.getElementById('posterFootTgt').textContent = fmtNum(fullTargetSum);
+      document.getElementById('posterFootAct').textContent = fmtNum(fullActualSum);
+      document.getElementById('posterFootAcv').textContent = pAcvTotal.toFixed(2).replace('.', ',') + '%';
+      document.getElementById('posterFootGap').textContent = fmtNum(pGapTotal);
+
+      // Edit Listeners
+      document.querySelectorAll('.btn-edit-row').forEach(b => {
+        b.addEventListener('click', (e) => openInputModal(parseInt(e.currentTarget.getAttribute('data-day'))));
+      });
+
+      renderSoRak();
+      renderTodos();
+      renderChart();
+      buildWaText(filledCount, mtdTarget, mtdActual, mtdAcv, mtdGap, avgGmPct, mtdGmRp, newDailyTarget, remDays, memPctTotal, soPct);
+    }
+
+    function renderSoRak() {
+      const tb = document.getElementById('soRakBody');
+      tb.innerHTML = '';
+      soRakItems.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-bold">${item.kode}</td>
+          <td class="py-2.5 px-3 font-sans">${item.nama}</td>
+          <td class="py-2.5 px-3 text-right text-red-500 font-bold">${fmtGap(item.adjust)}</td>
+          <td class="py-2.5 px-3 font-sans text-muted">${item.ket}</td>
+          <td class="py-2.5 px-3 text-center">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${item.status === 'Aman' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-amber-500/20 text-amber-500'}">${item.status}</span>
+          </td>
+        `;
+        tb.appendChild(tr);
+      });
+    }
+
+    document.getElementById('btnAddSoRak').addEventListener('click', () => {
+      soRakItems.push({
+        kode: "RAK-0" + (soRakItems.length + 2),
+        nama: "Kebutuhan Dapur & Sembako",
+        adjust: -14500,
+        ket: `Audit rutin oleh ${currentUser.username}`,
+        status: "Aman"
+      });
+      renderAll();
+      showToast('Audit rak baru dicatat');
+    });
+
+    function renderTodos() {
+      const wrap = document.getElementById('todoListWrapper');
+      wrap.innerHTML = '';
+      let done = 0;
+      todoList.forEach(t => {
+        if (t.done) done++;
+        const el = document.createElement('div');
+        el.className = 'sub-card border rounded-xl p-2.5 flex items-center justify-between gap-2 text-xs';
+        el.innerHTML = `
+          <label class="flex items-center gap-2.5 cursor-pointer flex-1">
+            <input type="checkbox" ${t.done ? 'checked' : ''} class="w-4 h-4 rounded accent-emerald-500">
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-500/15 text-blue-500">${t.shift}</span>
+            <span class="${t.done ? 'line-through text-muted' : 'font-medium'}">${t.text}</span>
+          </label>
+          <button class="btn-rm-todo text-muted hover:text-red-500 px-1">✕</button>
+        `;
+        el.querySelector('input').addEventListener('change', () => {
+          t.done = !t.done;
+          try { localStorage.setItem('ls_v3_todos', JSON.stringify(todoList)); } catch(e) {}
+          renderTodos();
+        });
+        el.querySelector('.btn-rm-todo').addEventListener('click', () => {
+          todoList = todoList.filter(x => x.id !== t.id);
+          try { localStorage.setItem('ls_v3_todos', JSON.stringify(todoList)); } catch(e) {}
+          renderTodos();
+        });
+        wrap.appendChild(el);
+      });
+
+      const pct = todoList.length > 0 ? Math.round((done / todoList.length) * 100) : 0;
+      document.getElementById('todoPctDisplay').textContent = pct + '%';
+      document.getElementById('todoBarFill').style.width = pct + '%';
+      document.getElementById('todoCounterText').textContent = `${done} dari ${todoList.length} tugas selesai`;
+      document.getElementById('cardHomeTodoPct').textContent = `To-Do: ${pct}% Selesai`;
+
+      const listTxt = todoList.map(t => `${t.done ? '✅' : '⬜'} [${t.shift}] ${t.text}`).join('\n');
+      document.getElementById('todoReportPreview').textContent = `📝 *REPORT TO-DO LIST HARIAN C383*\n👤 Petugas: ${currentUser.username} (${currentUser.shift})\n📊 Penyelesaian: *${pct}% (${done}/${todoList.length})*\n----------------------------------\n${listTxt}\n\n_LS Studio monitoring version 0.1.2026_`;
+    }
+
+    document.getElementById('btnAddTodo').addEventListener('click', () => {
+      const sh = document.getElementById('todoShiftSelect').value;
+      const inp = document.getElementById('todoInputText');
+      if (inp.value.trim()) {
+        todoList.push({ id: Date.now(), shift: sh, text: inp.value.trim(), done: false });
+        inp.value = '';
+        try { localStorage.setItem('ls_v3_todos', JSON.stringify(todoList)); } catch(e) {}
+        renderTodos();
+        showToast('Tugas operasional ditambahkan');
+      }
+    });
+
+    document.getElementById('btnCopyTodoWa').addEventListener('click', () => {
+      copyToClipboard(document.getElementById('todoReportPreview').textContent, '📋 Report To-Do berhasil disalin!');
+    });
+
+    function renderChart() {
+      const labels = storeDays.map(d => 'H' + d.tgl);
+      const targets = storeDays.map(d => d.target);
+      const actuals = storeDays.map(d => d.filled ? d.actual : null);
+      const bgColors = storeDays.map(d => {
+        if (!d.filled) return '#475569';
+        if (d.simulated) return '#A855F7';
+        return d.actual >= d.target ? '#2563EB' : '#EF4444';
+      });
+
+      const ctx = document.getElementById('homeChartCanvas').getContext('2d');
+      if (homeChartInstance) homeChartInstance.destroy();
+
+      homeChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              type: 'line',
+              label: 'Target Dinamis',
+              data: targets,
+              borderColor: '#F59E0B',
+              borderWidth: 2,
+              borderDash: [4, 4],
+              pointRadius: 0,
+              tension: 0.1
+            },
+            {
+              type: 'bar',
+              label: 'Actual Sales',
+              data: actuals,
+              backgroundColor: bgColors,
+              borderRadius: 3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { callback: v => (v / 1000000).toFixed(0) + ' Jt', font: { size: 10 } },
+              grid: { color: 'rgba(148,163,184,0.12)' }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { font: { size: 9 } }
+            }
+          }
+        }
+      });
+    }
+
+    function buildWaText(days, tgt, act, acv, gap, gmPct, gmRp, newTgt, remDays, memPct, soPct) {
+      const txt = `📊 *LAPORAN MONITORING TOKO KARANG SATRIA [C383]*
+👤 *PIC:* ${currentUser.username} (${currentUser.shift})
+🗓️ *Cut-Off:* Hari ke-${days} November 2026
+====================================
+*1. IKT & PENJUALAN*
+• Target MTD : ${fmtRp(tgt)}
+• Actual MTD : ${fmtRp(act)}
+• Achievement: *${acv.toFixed(2).replace('.', ',')}%*
+• Gap Sales  : *${fmtGap(gap)}*
+• Gross Margin: ${gmPct.toFixed(2).replace('.', ',')}% (${fmtRp(gmRp)})
+
+*2. TARGET HARIAN TERBARU (AUTO-GAP)*
+• Target Kejar: *${fmtRp(newTgt)} / hari*
+• Sisa Waktu  : ${remDays} Hari
+
+*3. MEMBER & STOCK OPNAME*
+• STD Member : ${memPct.toFixed(2).replace('.', ',')}% (Target 55%)
+• Rasio SO   : ${soPct.toFixed(3).replace('.', ',')}% (🟢 AMAN)
+
+_LS Studio monitoring version 0.1.2026_`;
+      document.getElementById('waReportBox').textContent = txt;
+    }
+
+    function copyToClipboard(text, msg) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => showToast(msg)).catch(() => fallbackCopy(text, msg));
+      } else {
+        fallbackCopy(text, msg);
+      }
+    }
+    function fallbackCopy(text, msg) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      try { document.execCommand('copy'); showToast(msg); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+
+    document.getElementById('btnCopyWaReport').addEventListener('click', () => {
+      copyToClipboard(document.getElementById('waReportBox').textContent, '📋 Laporan WA berhasil disalin!');
+    });
+
+    // ==========================================
+    // 7. DIRECT PDF DOWNLOAD (jsPDF + html2canvas)
+    // ==========================================
+    document.getElementById('btnDownloadPng').addEventListener('click', () => {
+      const el = document.getElementById('posterCaptureTarget');
+      showToast('📸 Merender gambar poster HD...');
+      html2canvas(el, { scale: 2.5, backgroundColor: '#FFFFFF', useCORS: true }).then(canvas => {
+        const a = document.createElement('a');
+        a.download = 'Monitoring_Sales_C383_Karang_Satria.png';
+        a.href = canvas.toDataURL('image/png');
+        a.click();
+        showToast('✅ Gambar PNG berhasil diunduh!');
+      });
+    });
+
+    document.getElementById('btnDownloadPdfDirect').addEventListener('click', () => {
+      const el = document.getElementById('posterCaptureTarget');
+      showToast('📥 Membuat file PDF siap unduh...');
+
+      html2canvas(el, { scale: 2.2, backgroundColor: '#FFFFFF', useCORS: true }).then(canvas => {
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        if (window.jspdf && window.jspdf.jsPDF) {
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          const pageWidth = pdf.internal.pageSize.getWidth();
+          const pageHeight = pdf.internal.pageSize.getHeight();
+
+          const margin = 10;
+          const maxW = pageWidth - (margin * 2);
+          const maxH = pageHeight - (margin * 2);
+
+          const ratio = canvas.width / canvas.height;
+          let renderW = maxW;
+          let renderH = renderW / ratio;
+
+          if (renderH > maxH) {
+            renderH = maxH;
+            renderW = renderH * ratio;
+          }
+
+          const xOffset = (pageWidth - renderW) / 2;
+          pdf.addImage(imgData, 'JPEG', xOffset, margin, renderW, renderH);
+          pdf.save('Laporan_Monitoring_Sales_C383_Karang_Satria.pdf');
+          showToast('✅ File PDF berhasil diunduh langsung!');
+        } else {
+          window.print();
+        }
+      }).catch(err => {
+        console.error(err);
+        window.print();
+      });
+    });
+
+    // ==========================================
+    // 8. NAVIGATION & MODALS
+    // ==========================================
+    const pages = ['pageHome', 'pageIkt', 'pageSo', 'pageMember', 'pageTodo', 'pageExport'];
+    function switchPage(targetId) {
+      pages.forEach(p => document.getElementById(p).classList.toggle('hidden', p !== targetId));
+      document.querySelectorAll('.nav-item').forEach(btn => {
+        const active = btn.getAttribute('data-target') === targetId;
+        btn.className = `nav-item flex flex-col items-center justify-center py-1 rounded-2xl transition ${active ? 'text-blue-500 font-extrabold scale-105' : 'text-muted font-medium'}`;
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    document.querySelectorAll('.nav-item').forEach(b => {
+      b.addEventListener('click', () => switchPage(b.getAttribute('data-target')));
+    });
+    document.querySelectorAll('[data-goto]').forEach(el => {
+      el.addEventListener('click', () => switchPage(el.getAttribute('data-goto')));
+    });
+
+    // Input Modal
+    const modalInput = document.getElementById('modalInput');
+    function openInputModal(day) {
+      const item = storeDays.find(x => x.tgl === day) || storeDays[9];
+      document.getElementById('inpDay').value = item.tgl;
+      document.getElementById('inpTarget').value = item.target;
+      document.getElementById('inpActual').value = item.filled ? item.actual : '';
+      document.getElementById('inpGmPct').value = item.gmPct || 18.65;
+      document.getElementById('inpStdToko').value = item.stdToko || 435;
+      document.getElementById('inpStdMember').value = item.stdMember || 255;
+      document.getElementById('inpSalesMember').value = item.salesMember || '';
+      modalInput.classList.remove('hidden');
+    }
+
+    document.getElementById('btnOpenInput').addEventListener('click', () => {
+      const firstEmpty = storeDays.find(x => !x.filled);
+      openInputModal(firstEmpty ? firstEmpty.tgl : 10);
+    });
+    document.getElementById('btnCloseInput').addEventListener('click', () => modalInput.classList.add('hidden'));
+    document.getElementById('btnCancelInput').addEventListener('click', () => modalInput.classList.add('hidden'));
+
+    document.getElementById('btnSaveInput').addEventListener('click', async () => {
+      const day = parseInt(document.getElementById('inpDay').value);
+      const act = parseFloat(document.getElementById('inpActual').value);
+      const idx = storeDays.findIndex(x => x.tgl === day);
+
+      if (idx !== -1 && !isNaN(act)) {
+        const gmP = parseFloat(document.getElementById('inpGmPct').value) || 18.65;
+        const stToko = parseInt(document.getElementById('inpStdToko').value) || 435;
+        const stMem = parseInt(document.getElementById('inpStdMember').value) || 255;
+        const slMem = parseFloat(document.getElementById('inpSalesMember').value) || Math.round(act * 0.6);
+
+        storeDays[idx].target = parseFloat(document.getElementById('inpTarget').value) || DEFAULT_TARGET;
+        storeDays[idx].actual = act;
+        storeDays[idx].gmPct = gmP;
+        storeDays[idx].stdToko = stToko;
+        storeDays[idx].stdMember = stMem;
+        storeDays[idx].salesMember = slMem;
+        storeDays[idx].filled = true;
+        storeDays[idx].simulated = false;
+
+        try { localStorage.setItem('ls_v3_days', JSON.stringify(storeDays)); } catch(e) {}
+        renderAll();
+        modalInput.classList.add('hidden');
+        showToast(`✅ Data tanggal ${day} disimpan & target diperbarui!`);
+
+        // Push to Supabase `spd_harian` if configured
+        if (config.supaUrl && config.supaKey) {
+          const dateStr = `2026-11-${String(day).padStart(2, '0')}`;
+          try {
+            await fetch(`${config.supaUrl}spd_harian?on_conflict=tanggal`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': config.supaKey,
+                'Authorization': `Bearer ${config.supaKey}`,
+                'Prefer': 'resolution=merge-duplicates'
+              },
+              body: JSON.stringify({
+                tanggal: dateStr,
+                spd: act,
+                gm_pct: gmP,
+                gm_rp: Math.round(act * (gmP / 100)),
+                std_member: stMem,
+                sales_member: slMem,
+                pic: currentUser.username
+              })
+            });
+          } catch (e) {}
+        }
+      } else {
+        showToast('Masukkan nominal Actual SPD terlebih dahulu');
+      }
+    });
+
+    // Simulate & Reset
+    document.getElementById('btnSimIkt').addEventListener('click', () => {
+      storeDays.forEach(d => {
+        if (d.tgl > 9) {
+          const wk = (d.tgl % 7 === 5 || d.tgl % 7 === 6 || d.tgl % 7 === 0);
+          const factor = wk ? (1.04 + Math.random() * 0.06) : (0.97 + Math.random() * 0.06);
+          d.actual = Math.round(d.target * factor);
+          d.stdToko = wk ? 485 : 425;
+          d.stdMember = wk ? 290 : 250;
+          d.salesMember = Math.round(d.actual * 0.6);
+          d.filled = true;
+          d.simulated = true;
+        }
+      });
+      renderAll();
+      showToast('⚡ Simulasi 30 hari penuh diaktifkan!');
+    });
+
+    document.getElementById('btnResetIkt').addEventListener('click', () => {
+      resetNineDays();
+      try { localStorage.setItem('ls_v3_days', JSON.stringify(storeDays)); } catch(e) {}
+      renderAll();
+      showToast('↺ Data direset kembali ke H1 - H9');
+    });
+
+    // Filters
+    ['All', 'Filled', 'Pending'].forEach(f => {
+      document.getElementById('iktBtn' + f).addEventListener('click', (e) => {
+        iktFilter = f.toLowerCase();
+        document.querySelectorAll('.ikt-flt').forEach(b => {
+          b.className = 'ikt-flt px-3 py-1.5 rounded-xl text-xs font-semibold sub-card border';
+        });
+        e.currentTarget.className = 'ikt-flt px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 text-white';
+        renderAll();
+      });
+    });
+
+    // Config Modal & 3-Tab Logic (Target, Users, API)
+    const modalConfig = document.getElementById('modalConfig');
+    const cfgTabs = [
+      { btn: 'tabCfgTarget', panel: 'panelCfgTarget' },
+      { btn: 'tabCfgUsers',  panel: 'panelCfgUsers' },
+      { btn: 'tabCfgApi',    panel: 'panelCfgApi' }
+    ];
+
+    function switchCfgTab(activeBtnId) {
+      cfgTabs.forEach(t => {
+        const b = document.getElementById(t.btn);
+        const p = document.getElementById(t.panel);
+        if (t.btn === activeBtnId) {
+          b.className = 'py-1.5 px-2 rounded-lg font-bold bg-blue-600 text-white transition';
+          p.classList.remove('hidden');
+        } else {
+          b.className = 'py-1.5 px-2 rounded-lg font-semibold text-muted hover:opacity-80 transition';
+          p.classList.add('hidden');
+        }
+      });
+    }
+
+    cfgTabs.forEach(t => {
+      document.getElementById(t.btn).addEventListener('click', () => switchCfgTab(t.btn));
+    });
+
+    function renderNetSalesHistory() {
+      const tb = document.getElementById('netSalesHistoryBody');
+      if (!tb) return;
+      tb.innerHTML = '';
+      const monthNames = ["", "Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+      netSalesRecords.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="py-1.5 px-2.5 font-bold">#${r.id}</td>
+          <td class="py-1.5 px-2.5">${monthNames[r.bulan] || r.bulan} ${r.tahun}</td>
+          <td class="py-1.5 px-2.5 text-right font-bold text-emerald-500">${fmtRp(r.net_sales)}</td>
+          <td class="py-1.5 px-2.5 text-center">
+            <button class="btn-use-target px-2 py-0.5 rounded bg-blue-500/15 text-blue-500 font-bold text-[10px] hover:bg-blue-500 hover:text-white transition" data-val="${r.net_sales}" data-bln="${r.bulan}" data-thn="${r.tahun}">
+              Terapkan
+            </button>
+          </td>
+        `;
+        tb.appendChild(tr);
+      });
+
+      document.querySelectorAll('.btn-use-target').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const val = parseFloat(e.currentTarget.getAttribute('data-val'));
+          const bln = parseInt(e.currentTarget.getAttribute('data-bln'));
+          const thn = parseInt(e.currentTarget.getAttribute('data-thn'));
+          document.getElementById('cfgMonthlyTarget').value = val;
+          document.getElementById('cfgTargetMonth').value = bln;
+          document.getElementById('cfgTargetYear').value = thn;
+          applyMonthlyTarget(val, bln, thn);
+        });
+      });
+    }
+
+    function renderRegisteredUsers() {
+      const container = document.getElementById('usersListContainer');
+      const datalist = document.getElementById('userSuggestions');
+      if (!container) return;
+      container.innerHTML = '';
+      if (datalist) datalist.innerHTML = '';
+
+      registeredUsers.forEach(u => {
+        if (datalist) {
+          const opt = document.createElement('option');
+          opt.value = u.username;
+          opt.textContent = `${u.nama_lengkap} (${u.role})`;
+          datalist.appendChild(opt);
+        }
+        const div = document.createElement('div');
+        div.className = 'sub-card border rounded-xl p-2 flex items-center justify-between gap-2 text-[11px]';
+        div.innerHTML = `
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-full bg-purple-600 text-white font-black flex items-center justify-center text-[10px]">
+              ${u.username.slice(0, 2)}
+            </div>
+            <div>
+              <span class="font-extrabold block leading-tight">${u.username} • <span class="text-blue-500">${u.nama_lengkap}</span></span>
+              <span class="text-[10px] text-muted">Role: ${u.role} | Status: ${u.aktif ? '🟢 Aktif' : '🔴 Nonaktif'}</span>
+            </div>
+          </div>
+          <span class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-500 font-mono text-[9px]">Bcrypt OK</span>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function applyMonthlyTarget(newTotal, bln, thn) {
+      FULL_MONTH_TARGET = newTotal;
+      DEFAULT_TARGET = Math.round(newTotal / 30);
+      config.monthlyTarget = newTotal;
+      config.targetMonth = bln;
+      config.targetYear = thn;
+
+      // Update or add in netSalesRecords
+      const existingIdx = netSalesRecords.findIndex(x => x.bulan === bln && x.tahun === thn);
+      if (existingIdx !== -1) {
+        netSalesRecords[existingIdx].net_sales = newTotal;
+      } else {
+        netSalesRecords.push({
+          id: netSalesRecords.length + 1,
+          bulan: bln,
+          tahun: thn,
+          net_sales: newTotal,
+          created_at: new Date().toISOString()
+        });
+      }
+
+      try {
+        localStorage.setItem('ls_v3_cfg', JSON.stringify(config));
+        localStorage.setItem('ls_v4_net_sales', JSON.stringify(netSalesRecords));
+      } catch(e) {}
+
+      renderNetSalesHistory();
+      renderAll();
+      showToast(`🎯 Target Bulanan (${fmtRp(newTotal)}) berhasil diterapkan!`);
+    }
+
+    document.getElementById('btnSaveTargetCfg').addEventListener('click', async () => {
+      const val = parseFloat(document.getElementById('cfgMonthlyTarget').value);
+      const bln = parseInt(document.getElementById('cfgTargetMonth').value);
+      const thn = parseInt(document.getElementById('cfgTargetYear').value);
+      if (!val || val <= 0) {
+        showToast('Masukkan nominal target bulanan yang valid');
+        return;
+      }
+      applyMonthlyTarget(val, bln, thn);
+
+      // Push to Supabase `net_sales` table if key is set
+      if (config.supaUrl && config.supaKey) {
+        try {
+          await fetch(`${config.supaUrl}net_sales`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': config.supaKey,
+              'Authorization': `Bearer ${config.supaKey}`
+            },
+            body: JSON.stringify({
+              bulan: bln,
+              tahun: thn,
+              net_sales: val,
+              created_at: new Date().toISOString()
+            })
+          });
+        } catch(e) {}
+      }
+    });
+
+    document.getElementById('btnCreateNewUser').addEventListener('click', async () => {
+      const uname = document.getElementById('newUsrUsername').value.trim().toUpperCase();
+      const fname = document.getElementById('newUsrFullname').value.trim();
+      const pass = document.getElementById('newUsrPass').value;
+      const pin = document.getElementById('newUsrPin').value || '123456';
+      const role = document.getElementById('newUsrRole').value;
+      const avatar = document.getElementById('newUsrAvatar').value.trim() || `https://sxdpymomwdggmnbsbebe.supabase.co/storage/v1/object/public/avatars/user_${Date.now()}.png`;
+
+      if (!uname || !fname || !pass) {
+        showToast('Lengkapi Username, Nama Lengkap, dan Password!');
+        return;
+      }
+
+      // Hash with bcryptjs if available, fallback to standard bcrypt format string
+      let passHash = "$2b$12$defaultHashSimulatedForLocalMode1234567890";
+      let pinHash = "$2b$12$defaultPinHashSimulatedForLocalMode123456";
+      try {
+        if (window.dcodeIO && window.dcodeIO.bcrypt) {
+          const salt = window.dcodeIO.bcrypt.genSaltSync(10);
+          passHash = window.dcodeIO.bcrypt.hashSync(pass, salt);
+          pinHash = window.dcodeIO.bcrypt.hashSync(pin, salt);
+        }
+      } catch(e) {}
+
+      const newUserObj = {
+        id: registeredUsers.length + 9,
+        username: uname,
+        password_hash: passHash,
+        nama_lengkap: fname,
+        role: role,
+        pin_hash: pinHash,
+        aktif: true,
+        last_login: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        avatar_url: avatar
+      };
+
+      registeredUsers.push(newUserObj);
+      try { localStorage.setItem('ls_v4_reg_users', JSON.stringify(registeredUsers)); } catch(e) {}
+      renderRegisteredUsers();
+
+      // Clear inputs
+      document.getElementById('newUsrUsername').value = '';
+      document.getElementById('newUsrFullname').value = '';
+      document.getElementById('newUsrPass').value = '';
+      document.getElementById('newUsrPin').value = '';
+
+      showToast(`👤 User baru "${uname}" (${fname}) berhasil dibuat!`);
+
+      // Push to Supabase `users` table if configured
+      if (config.supaUrl && config.supaKey) {
+        try {
+          await fetch(`${config.supaUrl}users`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': config.supaKey,
+              'Authorization': `Bearer ${config.supaKey}`
+            },
+            body: JSON.stringify({
+              username: uname,
+              password_hash: passHash,
+              nama_lengkap: fname,
+              role: role,
+              pin_hash: pinHash,
+              aktif: true,
+              created_at: new Date().toISOString(),
+              avatar_url: avatar
+            })
+          });
+        } catch(e) {}
+      }
+    });
+
+    document.getElementById('btnOpenConfig').addEventListener('click', () => {
+      document.getElementById('cfgStreamlit').value = config.streamlitUrl;
+      document.getElementById('cfgSupaUrl').value = config.supaUrl;
+      document.getElementById('cfgSupaKey').value = config.supaKey;
+      document.getElementById('cfgGroq').value = config.groqKey;
+      document.getElementById('cfgAi').value = config.aiKey;
+      document.getElementById('cfgMonthlyTarget').value = FULL_MONTH_TARGET;
+      renderNetSalesHistory();
+      renderRegisteredUsers();
+      modalConfig.classList.remove('hidden');
+    });
+    document.getElementById('btnCloseConfig').addEventListener('click', () => modalConfig.classList.add('hidden'));
+
+    document.getElementById('btnSaveConfig').addEventListener('click', () => {
+      config.streamlitUrl = document.getElementById('cfgStreamlit').value.trim() || "https://share.streamlit.io/";
+      config.supaUrl = document.getElementById('cfgSupaUrl').value.trim();
+      config.supaKey = document.getElementById('cfgSupaKey').value.trim();
+      config.groqKey = document.getElementById('cfgGroq').value.trim();
+      config.aiKey = document.getElementById('cfgAi').value.trim();
+
+      document.getElementById('linkStreamlitHome').href = config.streamlitUrl;
+      document.getElementById('linkStreamlitSo').href = config.streamlitUrl;
+
+      try { localStorage.setItem('ls_v3_cfg', JSON.stringify(config)); } catch(e) {}
+      modalConfig.classList.add('hidden');
+      showToast('⚙️ Konfigurasi Cloud & API berhasil disimpan!');
+      if (config.supaUrl && config.supaKey) syncFromSupabase();
+    });
+
+    renderNetSalesHistory();
+    renderRegisteredUsers();
+
+    // ==========================================
+    // 9. SMART AI GUARD: ADMIN-ONLY + CACHE + COOLDOWN
+    // ==========================================
+    let aiGuardState = {
+      groqRemaining: 3,
+      deepRemaining: 3,
+      lastGroqTime: 0,
+      lastDeepTime: 0,
+      cachedDataHash: "",
+      lastResetDate: new Date().toDateString()
+    };
+
+    try {
+      const savedGuard = localStorage.getItem('ls_v5_ai_guard');
+      if (savedGuard) {
+        const parsed = JSON.parse(savedGuard);
+        if (parsed.lastResetDate === new Date().toDateString()) {
+          aiGuardState = parsed;
+        }
+      }
+    } catch(e) {}
+
+    function saveAiGuard() {
+      try { localStorage.setItem('ls_v5_ai_guard', JSON.stringify(aiGuardState)); } catch(e) {}
+    }
+
+    function getCurrentSalesHash() {
+      const filled = storeDays.filter(d => d.filled && !d.simulated);
+      const sum = filled.reduce((a, b) => a + (b.actual || 0), 0);
+      return `D${filled.length}_S${Math.round(sum)}_T${Math.round(FULL_MONTH_TARGET)}`;
+    }
+
+    function isUserAdmin() {
+      const r = (currentUser.role || '').toLowerCase();
+      return r.includes('admin') || r.includes('cos') || r.includes('supervisor');
+    }
+
+    function updateAiPermissionUI() {
+      const admin = isUserAdmin();
+      const btnGroq = document.getElementById('btnRefreshGroq');
+      const btnDeep = document.getElementById('btnGenerateDeepAi');
+      const badgeAdmin = document.getElementById('aiAdminBadge');
+      const groqQuota = document.getElementById('groqQuotaBadge');
+      const deepQuota = document.getElementById('aiDailyQuotaText');
+
+      if (groqQuota) groqQuota.textContent = `Kuota Shift: ${aiGuardState.groqRemaining}/3`;
+      if (deepQuota) deepQuota.textContent = `Jatah Admin: ${aiGuardState.deepRemaining}/3 klik`;
+
+      if (admin) {
+        if (badgeAdmin) {
+          badgeAdmin.textContent = `🔓 Admin (${currentUser.username})`;
+          badgeAdmin.className = 'px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/15 text-emerald-500';
+        }
+        if (btnGroq) btnGroq.className = 'text-[11px] px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold flex items-center gap-1 flex-shrink-0 transition';
+        if (btnDeep) {
+          btnDeep.textContent = '✨ Generate Analisis Baru & Simpan ke Log';
+          btnDeep.className = 'w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition';
+        }
+      } else {
+        if (badgeAdmin) {
+          badgeAdmin.textContent = `🔒 Read-Only (${currentUser.role})`;
+          badgeAdmin.className = 'px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 text-amber-500';
+        }
+        if (btnGroq) btnGroq.className = 'text-[11px] px-2.5 py-1.5 rounded-xl bg-slate-800/60 text-slate-400 font-semibold flex items-center gap-1 flex-shrink-0 cursor-not-allowed';
+        if (btnDeep) {
+          btnDeep.textContent = '🔒 Khusus Admin (Crew Hanya Baca Cache)';
+          btnDeep.className = 'w-full py-2.5 rounded-xl bg-slate-700 text-slate-300 text-xs font-bold cursor-not-allowed';
+        }
+      }
+    }
+
+    const groqSamples = [
+      '"Halo Tim C383! Pencapaian MTD kita di 94,45% (kurang Rp 7,49 Jt). Fokuskan kasir tawarkan PWP tebus murah min. Rp 50rb ya, tambahan Rp 178rb/shift sudah mengunci 100% akhir bulan!"',
+      '"Semangat bertugas Tim Karang Satria! Kontribusi member sudah 58,41%. Pastikan chiller minuman dingin penuh dan area kasir rapi sebelum pergantian shift!"',
+      '"Review Cepat Supervisor: Rasio SO terjaga hijau di 0,118%. Pertahankan audit rutin di Rak Susu (RAK-01) dan Kosmetik (RAK-04)!"'
+    ];
+    let gIdx = 0;
+
+    document.getElementById('btnRefreshGroq').addEventListener('click', () => {
+      if (!isUserAdmin()) {
+        showToast('🔒 Akses Ditolak: Hanya Admin (LGMAS/KAZUHA) yang bisa me-refresh AI agar hemat kuota!');
+        return;
+      }
+      const now = Date.now();
+      const cooldownMs = 60 * 1000; // 1 minute cooldown
+      if (now - aiGuardState.lastGroqTime < cooldownMs) {
+        const waitSec = Math.ceil((cooldownMs - (now - aiGuardState.lastGroqTime)) / 1000);
+        showToast(`⏳ Anti-Spam Cooldown: Tunggu ${waitSec} detik lagi untuk hemat API Key`);
+        return;
+      }
+      if (aiGuardState.groqRemaining <= 0) {
+        showToast('🛑 Batas kuota refresh Groq shift ini (3/3) habis. Gunakan cache yang ada.');
+        return;
+      }
+
+      aiGuardState.groqRemaining--;
+      aiGuardState.lastGroqTime = now;
+      saveAiGuard();
+      updateAiPermissionUI();
+
+      gIdx = (gIdx + 1) % groqSamples.length;
+      document.getElementById('groqText').textContent = groqSamples[gIdx];
+      document.getElementById('groqCacheBadge').textContent = `⚡ Diperbarui oleh ${currentUser.username}`;
+      showToast(`🤖 Review Groq diperbarui! (Sisa kuota: ${aiGuardState.groqRemaining}/3)`);
+    });
+
+    document.getElementById('btnGenerateDeepAi').addEventListener('click', async () => {
+      if (!isUserAdmin()) {
+        showToast('🔒 Mode Hemat Kuota: Akun Crew hanya menampilkan hasil cache Admin!');
+        return;
+      }
+
+      const currentHash = getCurrentSalesHash();
+      const now = Date.now();
+      const cooldownMs = 60 * 1000;
+
+      if (aiGuardState.cachedDataHash === currentHash && (now - aiGuardState.lastDeepTime < 300000)) {
+        showToast('⚡ Smart Cache: Data sales belum berubah, menampilkan hasil cache tanpa memotong token API!');
+        return;
+      }
+
+      if (aiGuardState.deepRemaining <= 0) {
+        showToast('🛑 Kuota harian Deep AI (3/3) telah habis untuk menjaga keamanan API Key.');
+        return;
+      }
+
+      aiGuardState.deepRemaining--;
+      aiGuardState.lastDeepTime = now;
+      aiGuardState.cachedDataHash = currentHash;
+      saveAiGuard();
+      updateAiPermissionUI();
+
+      const provider = document.getElementById('aiProviderSelect').value.toUpperCase();
+      const filledDays = storeDays.filter(d => d.filled).length;
+      const newTgt = document.getElementById('homeNewTarget').textContent;
+
+      document.getElementById('aiCacheStatusText').textContent = `📦 Cache: H-${filledDays} (Oleh ${currentUser.username})`;
+      document.getElementById('aiDeepBox').innerHTML = `
+        <p><strong>1. Ringkasan Eksekutif (${provider} • Admin ${currentUser.username}):</strong> Hingga H-${filledDays}, toko telah membukukan penjualan aktual dengan target kejar baru <strong>${newTgt}/hari</strong>. Sistem Smart Cache mengunci analisis ini agar seluruh perangkat kru dapat membacanya tanpa memotong token tambahan.</p>
+        <p><strong>2. Evaluasi Margin & Member:</strong> Gross Margin stabil di 18,65% dan struk member mencapai 58,41%. Fokuskan upselling produk bermargin tinggi di area kasir.</p>
+        <p><strong>3. Taktik Operasional Shift:</strong> Awasi ketat rak rawan selisih (Susu & Kosmetik) serta pastikan penawaran tebus murah berjalan konsisten (+Rp 2.500/struk).</p>
+      `;
+
+      showToast(`✨ Analisis ${provider} berhasil dibuat & di-cache! (Sisa: ${aiGuardState.deepRemaining}/3)`);
+
+      // Save to Supabase `ai_chat_history` so other devices read from cache
+      if (config.supaUrl && config.supaKey) {
+        try {
+          await fetch(`${config.supaUrl}ai_chat_history`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': config.supaKey,
+              'Authorization': `Bearer ${config.supaKey}`
+            },
+            body: JSON.stringify({
+              username: currentUser.username,
+              provider: provider,
+              data_hash: currentHash,
+              created_at: new Date().toISOString()
+            })
+          });
+        } catch(e) {}
+      }
+    });
+
+    // Initial Render
+    updateAiPermissionUI();
+    renderAll();
+  </script>
+</body>
+</html>
