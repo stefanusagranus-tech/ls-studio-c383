@@ -171,7 +171,39 @@
       #pageExport { display: block !important; }
       #pageHome, #pageIkt, #pageSo, #pageMember, #pageTodo { display: none !important; }
     }
-  </style>
+  
+
+      /* CORE UI SAFETY LAYER — tidak bergantung pada Tailwind CDN */
+      .hidden { display: none !important; }
+      .page-section { display: block; width: 100%; }
+      .page-section.hidden { display: none !important; }
+      .login-overlay {
+        position: fixed; inset: 0; z-index: 10000; display: flex;
+        align-items: center; justify-content: center; padding: 16px;
+        overflow-y: auto; background: rgba(2, 6, 23, .94);
+        -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+      }
+      .login-overlay > div {
+        width: min(100%, 420px); max-height: calc(100dvh - 32px);
+        overflow-y: auto; background: #0f172a; color: #fff;
+        border: 1px solid #334155; border-radius: 22px; padding: 22px;
+        box-shadow: 0 24px 80px rgba(0,0,0,.5);
+      }
+      .login-overlay input, .login-overlay select {
+        box-sizing: border-box; width: 100%; min-height: 44px;
+        color: #fff; background: #020617; border: 1px solid #334155;
+        border-radius: 10px; padding: 10px 12px;
+      }
+      .login-overlay button { min-height: 44px; cursor: pointer; }
+      .nav-item, [data-goto], button { cursor: pointer; }
+      button:disabled { cursor: not-allowed; opacity: .55; }
+      #toast { z-index: 11000; }
+      @media (max-width: 480px) {
+        .login-overlay { padding: 10px; }
+        .login-overlay > div { padding: 18px; max-height: calc(100dvh - 20px); }
+      }
+
+    </style>
 </head>
 <body class="sky-night min-h-screen pb-24 relative">
 
@@ -193,7 +225,7 @@
   <!-- ========================================== -->
   <!-- LOGIN OVERLAY (AUTHENTICATION GATE)        -->
   <!-- ========================================== -->
-  <div id="loginOverlay" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-xl hidden no-print">
+  <div id="loginOverlay" class="login-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-xl no-print">
     <div class="w-full max-w-sm bg-slate-900/95 border border-slate-800 rounded-3xl p-6 shadow-2xl text-white space-y-5 relative overflow-hidden">
       <!-- Top Glow -->
       <div class="text-center space-y-1.5">
@@ -298,7 +330,7 @@
     <!-- ========================================== -->
     <!-- PAGE 0: BERANDA (INSIGHT, JAM, CUACA, GROQ)-->
     <!-- ========================================== -->
-    <section id="pageHome" class="space-y-4">
+    <section id="pageHome" class="page-section" class="space-y-4">
       
       <!-- Transparent Celestial Hero Card -->
       <div class="rounded-3xl p-5 text-white shadow-xl bg-slate-950/45 backdrop-blur-md border border-white/15 relative overflow-hidden">
@@ -416,7 +448,7 @@
     <!-- ========================================== -->
     <!-- PAGE 1: IKT TOKO (SALES, GM%, GM RP, TABEL)-->
     <!-- ========================================== -->
-    <section id="pageIkt" class="space-y-4 hidden">
+    <section id="pageIkt" class="page-section" class="space-y-4 hidden">
       
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div class="app-card p-3.5 rounded-2xl border">
@@ -502,7 +534,7 @@
     <!-- ========================================== -->
     <!-- PAGE 2: STOCK OPNAME (`so_hasil` & `so_rak_harian`) -->
     <!-- ========================================== -->
-    <section id="pageSo" class="space-y-4 hidden">
+    <section id="pageSo" class="page-section" class="space-y-4 hidden">
       
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div class="app-card p-3.5 rounded-2xl border">
@@ -569,7 +601,7 @@
     <!-- ========================================== -->
     <!-- PAGE 3: KONTRIBUSI MEMBER                  -->
     <!-- ========================================== -->
-    <section id="pageMember" class="space-y-4 hidden">
+    <section id="pageMember" class="page-section" class="space-y-4 hidden">
       
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div class="app-card p-3.5 rounded-2xl border">
@@ -621,7 +653,7 @@
     <!-- ========================================== -->
     <!-- PAGE 4: TO-DO LIST & SHIFT REPORT          -->
     <!-- ========================================== -->
-    <section id="pageTodo" class="space-y-4 hidden">
+    <section id="pageTodo" class="page-section" class="space-y-4 hidden">
       
       <div class="app-card p-4 rounded-2xl border space-y-3">
         <div class="flex items-center justify-between">
@@ -672,7 +704,7 @@
     <!-- ========================================== -->
     <!-- PAGE 5: LAPORAN, POSTER 1:1, PDF & AI      -->
     <!-- ========================================== -->
-    <section id="pageExport" class="space-y-5 hidden">
+    <section id="pageExport" class="page-section" class="space-y-5 hidden">
       
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 no-print">
         
@@ -1288,30 +1320,49 @@
     });
 
     document.getElementById('btnSubmitLogin').addEventListener('click', async () => {
-      const u = (document.getElementById('loginUsername').value.trim() || 'LGMAS').toUpperCase();
-      const r = document.getElementById('loginRole').value;
+      const u = document.getElementById('loginUsername').value.trim().toUpperCase();
+      const password = document.getElementById('loginPassword').value;
       const s = document.getElementById('loginShift').value;
-
-      const foundUser = registeredUsers.find(x => x.username.toUpperCase() === u);
+      const foundUser = registeredUsers.find(x => String(x.username || '').toUpperCase() === u && x.aktif !== false);
+      if (!u || !password) {
+        showToast('Masukkan username dan PIN/password.');
+        return;
+      }
+      if (!foundUser) {
+        showToast('Akun tidak ditemukan atau tidak aktif.');
+        return;
+      }
+      const bcryptLib = (window.dcodeIO && window.dcodeIO.bcrypt) || window.bcrypt;
+      if (!bcryptLib || typeof bcryptLib.compare !== 'function') {
+        showToast('Komponen verifikasi PIN belum termuat. Periksa koneksi internet lalu coba lagi.');
+        return;
+      }
+      let verified = false;
+      try {
+        if (foundUser.password_hash) verified = await bcryptLib.compare(password, foundUser.password_hash);
+        if (!verified && foundUser.pin_hash) verified = await bcryptLib.compare(password, foundUser.pin_hash);
+      } catch (err) { verified = false; }
+      if (!verified) {
+        showToast('PIN/password salah. Akses ditolak.');
+        return;
+      }
       currentUser = {
-        username: u,
-        nama_lengkap: foundUser ? foundUser.nama_lengkap : u,
-        role: foundUser ? foundUser.role : r,
+        username: foundUser.username,
+        nama_lengkap: foundUser.nama_lengkap || foundUser.username,
+        role: foundUser.role || 'crew',
         shift: s,
-        avatar_url: foundUser ? foundUser.avatar_url : ''
+        avatar_url: foundUser.avatar_url || ''
       };
       try { localStorage.setItem('ls_v3_user', JSON.stringify(currentUser)); } catch(e) {}
       updateUserBadge();
       document.getElementById('loginOverlay').classList.add('hidden');
-      showToast(`🔓 Selamat bertugas, ${u} (${s})`);
-
-      // Log activity to Supabase `user_activity` & `sessions` if configured
+      showToast(`🔓 Selamat bertugas, ${currentUser.username} (${s})`);
       if (config.supaUrl && config.supaKey) {
         try {
           await fetch(`${config.supaUrl}user_activity`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'apikey': config.supaKey, 'Authorization': `Bearer ${config.supaKey}` },
-            body: JSON.stringify({ username: u, role: r, shift: s, action: 'LOGIN_DASHBOARD', created_at: new Date().toISOString() })
+            body: JSON.stringify({ username: currentUser.username, role: currentUser.role, shift: s, action: 'LOGIN_DASHBOARD', created_at: new Date().toISOString() })
           });
         } catch (err) {}
       }
@@ -1635,8 +1686,22 @@
         return d.actual >= d.target ? '#2563EB' : '#EF4444';
       });
 
-      const ctx = document.getElementById('homeChartCanvas').getContext('2d');
-      if (homeChartInstance) homeChartInstance.destroy();
+      const canvas = document.getElementById('homeChartCanvas');
+      if (!canvas) return;
+      if (homeChartInstance) { try { homeChartInstance.destroy(); } catch (e) {} homeChartInstance = null; }
+      if (typeof Chart === 'undefined') {
+        const parent = canvas.parentElement;
+        if (parent && !parent.querySelector('.chart-fallback-note')) {
+          const note = document.createElement('div');
+          note.className = 'chart-fallback-note';
+          note.textContent = 'Grafik tidak tersedia — pustaka Chart.js belum termuat. Data tabel tetap dapat digunakan.';
+          note.style.cssText = 'padding:12px;color:#94a3b8;font-size:12px;text-align:center';
+          parent.appendChild(note);
+        }
+        return;
+      }
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
       homeChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -2340,5 +2405,44 @@ _LS Studio monitoring version 0.1.2026_`;
     updateAiPermissionUI();
     renderAll();
   </script>
+
+  <script>
+  // CORE UI RECOVERY: navigation remains available even if a secondary module fails.
+  (function () {
+    'use strict';
+    const pageIds = ['pageHome','pageIkt','pageSo','pageMember','pageTodo','pageExport'];
+    function showPage(id) {
+      if (!pageIds.includes(id)) return;
+      pageIds.forEach(function (pid) {
+        const node = document.getElementById(pid);
+        if (node) node.classList.toggle('hidden', pid !== id);
+      });
+      document.querySelectorAll('.nav-item').forEach(function (btn) {
+        const active = btn.getAttribute('data-target') === id;
+        btn.setAttribute('aria-current', active ? 'page' : 'false');
+        btn.classList.toggle('is-active', active);
+      });
+      window.scrollTo(0, 0);
+    }
+    document.addEventListener('click', function (event) {
+      const nav = event.target.closest('.nav-item, [data-goto]');
+      if (!nav) return;
+      const target = nav.getAttribute('data-target') || nav.getAttribute('data-goto');
+      if (target) showPage(target);
+    }, true);
+    // Always require an explicit sign-in on each fresh app launch.
+    const login = document.getElementById('loginOverlay');
+    if (login) login.classList.remove('hidden');
+    // Catch startup errors visibly instead of leaving a silent, dead screen.
+    window.addEventListener('error', function (event) {
+      const box = document.getElementById('startupErrorNotice');
+      if (box) {
+        box.hidden = false;
+        box.textContent = 'Sebagian fitur gagal dimuat: ' + (event.message || 'kesalahan JavaScript');
+      }
+    });
+  })();
+  </script>
+
 </body>
 </html>
