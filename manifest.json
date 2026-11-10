@@ -1,0 +1,16 @@
+{
+  "short_name": "LS Studio C383",
+  "name": "LS Studio Retail Monitoring C383 Karang Satria",
+  "icons": [
+    {
+      "src": "https://sxdpymomwdggmnbsbebe.supabase.co/storage/v1/object/public/avatars/user_7_1792450145.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    }
+  ],
+  "start_url": "index.html",
+  "background_color": "#0F172A",
+  "theme_color": "#DC2626",
+  "display": "standalone",
+  "orientation": "portrait"
+}

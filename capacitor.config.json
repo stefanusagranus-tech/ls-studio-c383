@@ -1,0 +1,9 @@
+{
+  "appId": "com.lsstudio.monitoring.c383",
+  "appName": "LS Studio C383",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}
